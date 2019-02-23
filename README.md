@@ -114,6 +114,17 @@ All these functions *should* be thread-safe, and none of them should cause any h
 
 **void JslSetRumble(int deviceId, int smallRumble, int bigRumble)** - DualShock 4s have two types of rumble, and they can be set at the same time with different intensities. These can be set from 0 to 255. Nintendo devices support rumble as well, but totally differently. They call it "HD rumble", and it's a great feature, but JoyShockLibrary doesn't yet support it.
 
+## Known and Perceived Issues
+### Bluetooth connectivity
+JoyShockLibrary doesn't yet support connecting the DualShock 4 by Bluetooth.
+
+JoyCons and Pro Controllers can only be connected by Bluetooth. Even when connected by USB, they (by Nintendo's design) still only communicate by Bluetooth. Some Bluetooth adapters can't keep up with these devices, resulting in laggy input. This is especially common when more than one device is connected (such as when using a pair of JoyCons). There is nothing JoyShockMapper or JoyShockLibrary can do about this.
+
+### Gyro poll rate on Nintendo devices
+The Nintendo devices report every 15ms, but their IMUs actually report every 5ms. Every 15ms report includes the last 3 gyro and accelerometer reports. When creating the latest IMU state for Nintendo devices, JoyShockLibrary averages out those 3 gyro and accelerometer reports, so that it can best include all that information in a sensible format. For things like controlling a cursor on a plane, this should be of little to no consequence, since the result is the same as adding all 3 reports separately over shorter time intervals. But for representing real 3D rotations of the controller, this causes the Nintendo devices to be *slightly* less accurate than they could be, because we're combining 3 rotations in a simplistic way.
+
+In a future version I hope to either combine the 3 rotations in a way that works better in 3D, or to add a way for a single controller event to report several IMU events at the same time.
+
 ## Credits
 I'm Jibb Smart, and I made JoyShockLibrary.
 
@@ -121,7 +132,7 @@ JoyShockLibrary uses substantial portions of mfosse's [JoyCon-Driver](https://gi
 
 JoyShockLibrary's DualShock 4 support would likely not be possible without the info available on [PSDevWiki](https://www.psdevwiki.com/ps4/Main_Page) and [Eleccelerator Wiki](http://eleccelerator.com/wiki/index.php?title=DualShock_4). chrippa's [ds4drv](https://github.com/chrippa/ds4drv) was also a handy reference for getting rumble and lights working right away.
 
-This software also relies on and links signal11's [HIDAPI](https://github.com/signal11/hidapi) to connect to USB and Bluetooth devices.
+This software also relies on and links signal11's [HIDAPI](https://github.com/signal11/hidapi) to connect to USB and Bluetooth devices. Since HIDAPI is linked statically, .objs are included. Since .objs may need to be compiled with the same compiler version as the dll itself, HIDAPI itself is included in a .zip.
 
 ## Helpful Resources
 * [GyroWiki](http://gyrowiki.jibbsmart.com) - All about good gyro controls for games:
