@@ -294,6 +294,8 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len) {
 			jc->simple_state.buttons |= ((buttons_pressed >> 13) << JSOFFSET_CAPTURE) & JSMASK_CAPTURE;
 			jc->simple_state.lTrigger = (buttons_pressed >> 7) & 1;
 			jc->simple_state.buttons |= ((int)(jc->simple_state.lTrigger) << JSOFFSET_ZL) & JSMASK_ZL;
+			jc->simple_state.buttons |= ((buttons_pressed >> 5) << JSOFFSET_SL) & JSMASK_SL;
+			jc->simple_state.buttons |= ((buttons_pressed >> 4) << JSOFFSET_SR) & JSMASK_SR;
 
 			// just need to negate gyroZ
 			jc->imu_state.gyroZ = -jc->imu_state.gyroZ;
@@ -311,6 +313,8 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len) {
 			jc->simple_state.buttons |= ((buttons_pressed >> 28) << JSOFFSET_HOME) & JSMASK_HOME;
 			jc->simple_state.rTrigger = (buttons_pressed >> 23) & 1;
 			jc->simple_state.buttons |= ((int)(jc->simple_state.rTrigger) << JSOFFSET_ZR) & JSMASK_ZR;
+			jc->simple_state.buttons |= ((buttons_pressed >> 21) << JSOFFSET_SL) & JSMASK_SL;
+			jc->simple_state.buttons |= ((buttons_pressed >> 20) << JSOFFSET_SR) & JSMASK_SR;
 
 			// for some reason we need to negate x and y, and z on the right joycon
 			jc->imu_state.gyroX = -jc->imu_state.gyroX;
