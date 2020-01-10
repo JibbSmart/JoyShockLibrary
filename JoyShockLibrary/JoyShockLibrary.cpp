@@ -135,8 +135,7 @@ int JslConnectDevices()
 		JoyShock* jc = pair.second;
 		if (jc->is_ds4) {
 			if (!jc->is_usb) {
-				// TODO: Actually set up bluetooth for DS4
-				//joycons[i].init_ds4_bt();
+				jc->init_ds4_bt();
 			}
 			else {
 				jc->init_ds4_usb();
@@ -214,6 +213,9 @@ void JslDisconnectAndDisposeAll()
 		if (jc->is_ds4) {
 			if (jc->is_usb) {
 				jc->deinit_ds4_usb();
+			}
+			else {
+				jc->deinit_ds4_bt();
 			}
 		} // TODO: Charging grip? bluetooth?
 		else if (jc->is_usb) {

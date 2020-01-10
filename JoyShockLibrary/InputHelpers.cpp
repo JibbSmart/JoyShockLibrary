@@ -15,15 +15,24 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len) {
 	jc->last_polled = time_now;
 	// ds4
 	if (jc->is_ds4) {
-		if (packet[0] == 0x01) {
+		int indexOffset = 0;
+		bool isValid = true;
+		if (!jc->is_usb) {
+			isValid = packet[0] == 0x11;
+			indexOffset = 2;
+		}
+		else {
+			isValid = packet[0] == 0x01;
+		}
+		if (isValid) {
 			// Gyroscope:
 			// Gyroscope data is relative (degrees/s)
-			int16_t gyroSampleY = uint16_to_int16(packet[13] | (packet[14] << 8) & 0xFF00);
-			int16_t gyroSampleZ = uint16_to_int16(packet[15] | (packet[16] << 8) & 0xFF00);
-			int16_t gyroSampleX = uint16_to_int16(packet[17] | (packet[18] << 8) & 0xFF00);
-			int16_t accelSampleX = uint16_to_int16(packet[19] | (packet[20] << 8) & 0xFF00);
-			int16_t accelSampleY = uint16_to_int16(packet[21] | (packet[22] << 8) & 0xFF00);
-			int16_t accelSampleZ = uint16_to_int16(packet[23] | (packet[24] << 8) & 0xFF00);
+			int16_t gyroSampleY = uint16_to_int16(packet[indexOffset+13] | (packet[indexOffset+14] << 8) & 0xFF00);
+			int16_t gyroSampleZ = uint16_to_int16(packet[indexOffset+15] | (packet[indexOffset+16] << 8) & 0xFF00);
+			int16_t gyroSampleX = uint16_to_int16(packet[indexOffset+17] | (packet[indexOffset+18] << 8) & 0xFF00);
+			int16_t accelSampleX = uint16_to_int16(packet[indexOffset+19] | (packet[indexOffset+20] << 8) & 0xFF00);
+			int16_t accelSampleY = uint16_to_int16(packet[indexOffset+21] | (packet[indexOffset+22] << 8) & 0xFF00);
+			int16_t accelSampleZ = uint16_to_int16(packet[indexOffset+23] | (packet[indexOffset+24] << 8) & 0xFF00);
 			// convert to real units
 			jc->imu_state.gyroX = (float)(gyroSampleY) * -(2000.0 / 32767.0);
 			jc->imu_state.gyroY = (float)(gyroSampleZ) * (2000.0 / 32767.0);
@@ -38,39 +47,39 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len) {
 
 			// DS4 dpad is a hat...  0x08 is released, 0=N, 1=NE, 2=E, 3=SE, 4=S, 5=SW, 6=W, 7=NW
 			// http://eleccelerator.com/wiki/index.php?title=DualShock_4
-			uint8_t hat = packet[5] & 0x0f;
+			uint8_t hat = packet[indexOffset+5] & 0x0f;
 
 			if ((hat > 2) & (hat < 6)) jc->simple_state.buttons |= JSMASK_DOWN; // down = SE | S | SW
 			if ((hat == 7) | (hat < 2)) jc->simple_state.buttons |= JSMASK_UP; // up = N | NE | NW
 			if ((hat > 0) & (hat < 4)) jc->simple_state.buttons |= JSMASK_RIGHT; // right = NE | E | SE
 			if ((hat > 4) & (hat < 8)) jc->simple_state.buttons |= JSMASK_LEFT; // left = SW | W | NW
 
-			jc->simple_state.buttons |= ((int)(packet[5] >> 4) << JSOFFSET_W) & JSMASK_W;
-			jc->simple_state.buttons |= ((int)(packet[5] >> 7) << JSOFFSET_N) & JSMASK_N;
-			jc->simple_state.buttons |= ((int)(packet[5] >> 5) << JSOFFSET_S) & JSMASK_S;
-			jc->simple_state.buttons |= ((int)(packet[5] >> 6) << JSOFFSET_E) & JSMASK_E;
-			jc->simple_state.buttons |= ((int)(packet[6] >> 6) << JSOFFSET_LCLICK) & JSMASK_LCLICK;
-			jc->simple_state.buttons |= ((int)(packet[6] >> 7) << JSOFFSET_RCLICK) & JSMASK_RCLICK;
-			jc->simple_state.buttons |= ((int)(packet[6] >> 5) << JSOFFSET_OPTIONS) & JSMASK_OPTIONS;
-			jc->simple_state.buttons |= ((int)(packet[6] >> 4) << JSOFFSET_SHARE) & JSMASK_SHARE;
-			jc->simple_state.buttons |= ((int)(packet[6] >> 1) << JSOFFSET_R) & JSMASK_R;
-			jc->simple_state.buttons |= ((int)(packet[6]) << JSOFFSET_L) & JSMASK_L;
-			jc->simple_state.buttons |= ((int)(packet[7]) << JSOFFSET_PS) & JSMASK_PS;
-			jc->simple_state.buttons |= ((int)(packet[7] >> 1) << JSOFFSET_TOUCHPAD_CLICK) & JSMASK_TOUCHPAD_CLICK;
-			//jc->btns.zr = (packet[6] >> 3) & 1;
-			//jc->btns.zl = (packet[6] >> 2) & 1;
-			jc->simple_state.rTrigger = packet[9] / 255.0f;
-			jc->simple_state.lTrigger = packet[8] / 255.0f;
+			jc->simple_state.buttons |= ((int)(packet[indexOffset+5] >> 4) << JSOFFSET_W) & JSMASK_W;
+			jc->simple_state.buttons |= ((int)(packet[indexOffset+5] >> 7) << JSOFFSET_N) & JSMASK_N;
+			jc->simple_state.buttons |= ((int)(packet[indexOffset+5] >> 5) << JSOFFSET_S) & JSMASK_S;
+			jc->simple_state.buttons |= ((int)(packet[indexOffset+5] >> 6) << JSOFFSET_E) & JSMASK_E;
+			jc->simple_state.buttons |= ((int)(packet[indexOffset+6] >> 6) << JSOFFSET_LCLICK) & JSMASK_LCLICK;
+			jc->simple_state.buttons |= ((int)(packet[indexOffset+6] >> 7) << JSOFFSET_RCLICK) & JSMASK_RCLICK;
+			jc->simple_state.buttons |= ((int)(packet[indexOffset+6] >> 5) << JSOFFSET_OPTIONS) & JSMASK_OPTIONS;
+			jc->simple_state.buttons |= ((int)(packet[indexOffset+6] >> 4) << JSOFFSET_SHARE) & JSMASK_SHARE;
+			jc->simple_state.buttons |= ((int)(packet[indexOffset+6] >> 1) << JSOFFSET_R) & JSMASK_R;
+			jc->simple_state.buttons |= ((int)(packet[indexOffset+6]) << JSOFFSET_L) & JSMASK_L;
+			jc->simple_state.buttons |= ((int)(packet[indexOffset+7]) << JSOFFSET_PS) & JSMASK_PS;
+			jc->simple_state.buttons |= ((int)(packet[indexOffset+7] >> 1) << JSOFFSET_TOUCHPAD_CLICK) & JSMASK_TOUCHPAD_CLICK;
+			//jc->btns.zr = (packet[indexOffset+6] >> 3) & 1;
+			//jc->btns.zl = (packet[indexOffset+6] >> 2) & 1;
+			jc->simple_state.rTrigger = packet[indexOffset+9] / 255.0f;
+			jc->simple_state.lTrigger = packet[indexOffset+8] / 255.0f;
 
 			if (jc->simple_state.rTrigger > 0.0) jc->simple_state.buttons |= JSMASK_ZR;
 			if (jc->simple_state.lTrigger > 0.0) jc->simple_state.buttons |= JSMASK_ZL;
 
-			uint16_t stick_x = packet[1];
-			uint16_t stick_y = packet[2];
+			uint16_t stick_x = packet[indexOffset+1];
+			uint16_t stick_y = packet[indexOffset+2];
 			stick_y = 255 - stick_y;
 
-			uint16_t stick2_x = packet[3];
-			uint16_t stick2_y = packet[4];
+			uint16_t stick2_x = packet[indexOffset+3];
+			uint16_t stick2_y = packet[indexOffset+4];
 			stick2_y = 255 - stick2_y;
 
 			jc->simple_state.stickLX = (std::fmin)(1.0, (stick_x - 127.0) / 127.0);
@@ -115,7 +124,7 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len) {
 
 		// offset for usb or bluetooth data:
 		/*int offset = settings.usingBluetooth ? 0 : 10;*/
-		int offset = jc->bluetooth ? 0 : 10;
+		int offset = !jc->is_usb ? 0 : 10;
 
 		uint8_t *btn_data = packet + offset + 3;
 
