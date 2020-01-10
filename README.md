@@ -116,9 +116,9 @@ All these functions *should* be thread-safe, and none of them should cause any h
 
 ## Known and Perceived Issues
 ### Bluetooth connectivity
-JoyShockLibrary doesn't yet support connecting the DualShock 4 by Bluetooth.
+JoyShockLibrary doesn't yet support setting rumble and light colour for the DualShock 4 via Bluetooth.
 
-JoyCons and Pro Controllers can only be connected by Bluetooth. Even when connected by USB, they (by Nintendo's design) still only communicate by Bluetooth. Some Bluetooth adapters can't keep up with these devices, resulting in laggy input. This is especially common when more than one device is connected (such as when using a pair of JoyCons). There is nothing JoyShockMapper or JoyShockLibrary can do about this.
+JoyCons and Pro Controllers can only be connected by Bluetooth. Some Bluetooth adapters can't keep up with these devices, resulting in laggy input. This is especially common when more than one device is connected (such as when using a pair of JoyCons). There is nothing JoyShockMapper or JoyShockLibrary can do about this.
 
 ### Gyro poll rate on Nintendo devices
 The Nintendo devices report every 15ms, but their IMUs actually report every 5ms. Every 15ms report includes the last 3 gyro and accelerometer reports. When creating the latest IMU state for Nintendo devices, JoyShockLibrary averages out those 3 gyro and accelerometer reports, so that it can best include all that information in a sensible format. For things like controlling a cursor on a plane, this should be of little to no consequence, since the result is the same as adding all 3 reports separately over shorter time intervals. But for representing real 3D rotations of the controller, this causes the Nintendo devices to be *slightly* less accurate than they could be, because we're combining 3 rotations in a simplistic way.
