@@ -213,6 +213,53 @@ public:
 		return result ^ 0xFFFFFFFF;
 	}
 
+	void enable_gyro_ds4_bt()
+	{
+		// enable gyro?
+		unsigned char buf[38];
+		memset(buf, 0, 38);
+		buf[0] = 0xa3;
+		buf[1] = 0x02;
+		buf[2] = 0x01;
+		//buf[3] = 0x00;
+		//buf[4] = 0xff;
+		//buf[5] = 0xff;
+		//buf[6] = 0x01;
+		//buf[7] = 0x00;
+		//buf[8] = 0x5e;
+		//buf[9] = 0x22;
+		//buf[10] = 0x84;
+		//buf[11] = 0x22;
+		//buf[12] = 0x9b;
+		//buf[13] = 0x22;
+		//buf[14] = 0xa6;
+		//buf[15] = 0xdd;
+		//buf[16] = 0x79;
+		//buf[17] = 0xdd;
+		//buf[18] = 0x64;
+		//buf[19] = 0xdd;
+		//buf[20] = 0x1c;
+		//buf[21] = 0x02;
+		//buf[22] = 0x1c;
+		//buf[23] = 0x02;
+		//buf[24] = 0x85;
+		//buf[25] = 0x1f;
+		//buf[26] = 0x9f;
+		//buf[27] = 0xe0;
+		//buf[28] = 0x92;
+		//buf[29] = 0x20;
+		//buf[30] = 0xdc;
+		//buf[31] = 0xe0;
+		//buf[32] = 0x4d;
+		//buf[33] = 0x1c;
+		//buf[34] = 0x1e;
+		//buf[35] = 0xde;
+		//buf[36] = 0x08;
+		//buf[37] = 0x00;
+
+		hid_write(handle, buf, 38);
+	}
+
 public:
 	JoyShock(struct hid_device_info *dev, int uniqueHandle) {
 
@@ -262,7 +309,11 @@ public:
 			unsigned char buf[64];
 			memset(buf, 0, 64);
 
-			hid_read_timeout(this->handle, buf, 64, 20);
+			enable_gyro_ds4_bt();
+			// consume response
+			hid_read_timeout(handle, buf, 64, 100);
+
+			hid_read_timeout(handle, buf, 64, 20);
 			// choose between BT and USB
 			if (buf[0] == 0x11) {
 				this->is_usb = false;
