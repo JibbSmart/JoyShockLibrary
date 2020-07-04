@@ -8,6 +8,11 @@
 #include <unordered_map>
 #include <atomic>
 #include "tools.cpp"
+#include <cstring>
+
+#ifdef __GNUC__
+#define _wcsdup wcsdup
+#endif
 
 // PS4 stuff
 // http://www.psdevwiki.com/ps4/DS4-USB

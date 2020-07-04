@@ -1,7 +1,7 @@
-#pragma once
-
 #include "JoyShockLibrary.h"
 #include "JoyShock.cpp"
+
+#include <cmath>
 
 bool handle_input(JoyShock *jc, uint8_t *packet, int len) {
 	if (packet[0] == 0) return false; // ignore non-responses
