@@ -301,3 +301,33 @@ __pycache__/
 *.btm.cs
 *.odx.cs
 *.xsd.cs
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Debug files
+*.dSYM/
+
+# Qt Creator
+*.pro.user
+CMakeLists.txt.user
+CMakeLists.txt.user*
+
+build-*
+*.config
+*.creator
+*.files
+*.includes
+
+# macOS Finder files
+.DS_Store
+._.DS_Store
+
+# Vim
+*.swp
+
+# IntelliJ
+.idea/
+cmake-build*
+

@@ -1,4 +1,5 @@
 #pragma once
+
 #include <chrono>
 #include <thread>
 #include <map>
@@ -6,6 +7,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <cstring>
 
 //#include <curl/curl.h>
 
