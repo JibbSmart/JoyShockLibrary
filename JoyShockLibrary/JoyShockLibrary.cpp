@@ -47,8 +47,13 @@ void pollIndividualLoop(JoyShock *jc) {
 		unsigned char buf[64];
 		memset(buf, 0, 64);
 
-		hid_read_timeout(jc->handle, buf, 64, 20);
+		int res = hid_read_timeout(jc->handle, buf, 64, 1000);
 
+		if (res == 0)
+		{
+			printf("Controller %d timed out\n", jc->handle);
+			break;
+		}
 		// we want to be able to do these check-and-calls without fear of interruption by another thread. there could be many threads (as many as connected controllers),
 		// and the callback could be time-consuming (up to the user), so we use a readers-writer-lock.
 		if (handle_input(jc, buf, 64) && _pollCallback != nullptr) { // but the user won't necessarily have a callback at all, so we'll skip the lock altogether in that case
@@ -63,6 +68,8 @@ void pollIndividualLoop(JoyShock *jc) {
 
 int JslConnectDevices()
 {
+	// for writing to console:
+	//freopen("CONOUT$", "w", stdout);
 	if (_joyshocks.size() > 0) {
 		// already connected? clean up old stuff!
 		JslDisconnectAndDisposeAll();
@@ -87,6 +94,7 @@ int JslConnectDevices()
 
 			// bluetooth, left / right joycon:
 			if (cur_dev->product_id == JOYCON_L_BT || cur_dev->product_id == JOYCON_R_BT) {
+				//printf("JOYCON\n");
 				JoyShock* jc = new JoyShock(cur_dev, GetUniqueHandle());
 				_joyshocks.emplace(jc->intHandle, jc);
 			}
@@ -94,12 +102,14 @@ int JslConnectDevices()
 			// pro controller:
 			if (cur_dev->product_id == PRO_CONTROLLER) {
 				JoyShock* jc = new JoyShock(cur_dev, GetUniqueHandle());
+				//printf("PRO\n");
 				_joyshocks.emplace(jc->intHandle, jc);
 			}
 
 			// charging grip:
 			if (cur_dev->product_id == JOYCON_CHARGING_GRIP) {
 				JoyShock* jc = new JoyShock(cur_dev, GetUniqueHandle());
+				//printf("GRIP\n");
 				_joyshocks.emplace(jc->intHandle, jc);
 			}
 
@@ -117,6 +127,7 @@ int JslConnectDevices()
 		// do we need to confirm vendor id if this is what we asked for?
 		if (cur_dev->vendor_id == DS4_VENDOR) {
 			// usb or bluetooth ds4:
+			printf("DS4\n");
 			if (cur_dev->product_id == DS4_USB ||
 				cur_dev->product_id == DS4_USB_V2 ||
 				cur_dev->product_id == DS4_BT) {
@@ -142,9 +153,11 @@ int JslConnectDevices()
 			}
 		} // charging grip
 		else if (jc->is_usb) {
+			//printf("USB\n");
 			jc->init_usb();
 		}
 		else {
+			//printf("BT\n");
 			jc->init_bt();
 		}
 		// all get time now for polling

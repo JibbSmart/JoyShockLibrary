@@ -424,18 +424,23 @@ public:
 		//printf("{%.1f} {%d}\n", y, numSamplesAvailable);
 	}
 
-	void hid_exchange(hid_device *handle, unsigned char *buf, int len) {
-		if (!handle) return;
+	bool hid_exchange(hid_device *handle, unsigned char *buf, int len) {
+		if (!handle) return false;
 
 		int res;
 
 		res = hid_write(handle, buf, len);
 
-		res = hid_read(handle, buf, 0x40);
+		res = hid_read_timeout(handle, buf, 0x40, 1000);
+		if (res == 0)
+		{
+			return false;
+		}
+		return true;
 	}
 
 
-	void send_command(int command, uint8_t *data, int len) {
+	bool send_command(int command, uint8_t *data, int len) {
 		unsigned char buf[0x40];
 		memset(buf, 0, 0x40);
 
@@ -450,14 +455,18 @@ public:
 			memcpy(buf + (is_usb ? 0x9 : 0x1), data, len);
 		}
 
-		hid_exchange(this->handle, buf, len + (is_usb ? 0x9 : 0x1));
+		if (!hid_exchange(this->handle, buf, len + (is_usb ? 0x9 : 0x1)))
+		{
+			return false;
+		}
 
 		if (data) {
 			memcpy(data, buf, 0x40);
 		}
+		return true;
 	}
 
-	void send_subcommand(int command, int subcommand, uint8_t *data, int len) {
+	bool send_subcommand(int command, int subcommand, uint8_t *data, int len) {
 		unsigned char buf[0x40];
 		memset(buf, 0, 0x40);
 
@@ -480,11 +489,15 @@ public:
 			memcpy(buf + 10, data, len);
 		}
 
-		send_command(command, buf, 10 + len);
+		if (!send_command(command, buf, 10 + len))
+		{
+			return false;
+		}
 
 		if (data) {
 			memcpy(data, buf, 0x40); //TODO
 		}
+		return true;
 	}
 
 	void rumble(int frequency, int intensity) {
@@ -520,41 +533,7 @@ public:
 		send_command(0x10, (uint8_t*)buf, 0x9);
 	}
 
-	int init_bt() {
-		unsigned char buf[0x40];
-		memset(buf, 0, 0x40);
-
-
-		// set blocking to ensure command is recieved:
-		hid_set_nonblocking(this->handle, 0);
-
-		// Enable vibration
-		//printf("Enabling vibration...\n");
-		buf[0] = 0x01; // Enabled
-		send_subcommand(0x1, 0x48, buf, 1);
-
-		// Enable IMU data
-		//printf("Enabling IMU data...\n");
-		buf[0] = 0x01; // Enabled
-		send_subcommand(0x01, 0x40, buf, 1);
-
-
-		// Set input report mode (to push at 60hz)
-		// x00	Active polling mode for IR camera data. Answers with more than 300 bytes ID 31 packet
-		// x01	Active polling mode
-		// x02	Active polling mode for IR camera data.Special IR mode or before configuring it ?
-		// x21	Unknown.An input report with this ID has pairing or mcu data or serial flash data or device info
-		// x23	MCU update input report ?
-		// 30	NPad standard mode. Pushes current state @60Hz. Default in SDK if arg is not in the list
-		// 31	NFC mode. Pushes large packets @60Hz
-		//printf("Set input report mode to 0x30...\n");
-		buf[0] = 0x30;
-		send_subcommand(0x01, 0x03, buf, 1);
-
-		// @CTCaer
-
-		// get calibration data:
-		//printf("Getting calibration data...\n");
+	void get_switch_controller_info() {
 		memset(factory_stick_cal, 0, 0x12);
 		memset(device_colours, 0, 0xC);
 		memset(user_stick_cal, 0, 0x16);
@@ -696,7 +675,7 @@ public:
 		gyro_cal_coeff[2] = (float)(936.0 / (float)(13371 - uint16_to_int16(sensor_cal[1][2])) * 0.01745329251994);
 
 		// Device colours
-		body_colour = 
+		body_colour =
 			(((int)device_colours[0]) << 16) +
 			(((int)device_colours[1]) << 8) +
 			(((int)device_colours[2]));
@@ -713,16 +692,164 @@ public:
 			(((int)device_colours[10]) << 8) +
 			(((int)device_colours[11]));
 
-		//printf("Body: %#08x; Buttons: %#08x; Left Grip: %#08x; Right Grip: %#08x;\n",
-		//	body_colour,
-		//	button_colour,
-		//	left_grip_colour,
-		//	right_grip_colour);
+		printf("Body: %#08x; Buttons: %#08x; Left Grip: %#08x; Right Grip: %#08x;\n",
+			body_colour,
+			button_colour,
+			left_grip_colour,
+			right_grip_colour);
 
 		//hex_dump(reinterpret_cast<unsigned char*>(sensor_cal[0]), 6);
 		//hex_dump(reinterpret_cast<unsigned char*>(sensor_cal[1]), 6);
+	}
 
-		//printf("Successfully initialized %s!\n", this->name.c_str());
+	void init_usb() {
+		unsigned char buf[0x400];
+		memset(buf, 0, 0x400);
+
+		// set blocking:
+		// this insures we get the MAC Address
+		hid_set_nonblocking(this->handle, 0);
+
+		//Get MAC Left
+		printf("Getting MAC...\n");
+		memset(buf, 0x00, 0x40);
+		buf[0] = 0x80;
+		buf[1] = 0x01;
+		hid_exchange(this->handle, buf, 0x2);
+
+		//if (buf[2] == 0x3) {
+		//	printf("%s disconnected!\n", this->name.c_str());
+		//}
+		//else {
+		//	printf("Found %s, MAC: %02x:%02x:%02x:%02x:%02x:%02x\n", this->name.c_str(), buf[9], buf[8], buf[7], buf[6], buf[5], buf[4]);
+		//}
+
+		// set non-blocking:
+		//hid_set_nonblocking(jc->handle, 1);
+
+		// Do handshaking
+		printf("Doing handshake...\n");
+		memset(buf, 0x00, 0x40);
+		buf[0] = 0x80;
+		buf[1] = 0x02;
+		hid_exchange(this->handle, buf, 0x2);
+
+		// Switch baudrate to 3Mbit
+		printf("Switching baudrate...\n");
+		memset(buf, 0x00, 0x40);
+		buf[0] = 0x80;
+		buf[1] = 0x03;
+		hid_exchange(this->handle, buf, 0x2);
+
+		//Do handshaking again at new baudrate so the firmware pulls pin 3 low?
+		printf("Doing handshake...\n");
+		memset(buf, 0x00, 0x40);
+		buf[0] = 0x80;
+		buf[1] = 0x02;
+		hid_exchange(this->handle, buf, 0x2);
+
+		//Only talk HID from now on
+		printf("Only talk HID...\n");
+		memset(buf, 0x00, 0x40);
+		buf[0] = 0x80;
+		buf[1] = 0x04;
+		hid_exchange(this->handle, buf, 0x2);
+
+		// Enable vibration
+		printf("Enabling vibration...\n");
+		memset(buf, 0x00, 0x400);
+		buf[0] = 0x01; // Enabled
+		send_subcommand(0x1, 0x48, buf, 1);
+
+		// Enable IMU data
+		printf("Enabling IMU data...\n");
+		memset(buf, 0x00, 0x400);
+		buf[0] = 0x01; // Enabled
+		send_subcommand(0x1, 0x40, buf, 1);
+
+		printf("Getting calibration data...\n");
+		get_switch_controller_info();
+
+		printf("Successfully initialized %s!\n", this->name.c_str());
+	}
+
+	int init_bt() {
+		unsigned char buf[0x40];
+		memset(buf, 0, 0x40);
+		printf("Initialising Bluetooth connection...\n");
+
+		// set blocking to ensure command is recieved:
+		hid_set_nonblocking(this->handle, 0);
+
+		// first, check if this is a USB connection
+		buf[0] = 0x80;
+		buf[1] = 0x01;
+		hid_write(this->handle, buf, 2);
+		// wait for up to 5 messages for a USB acknowledgement
+		for (int idx = 0; idx < 5; idx++)
+		{
+			if (hid_read_timeout(this->handle, buf, 0x40, 200) && buf[0] == 0x81)
+			{
+				//printf("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
+				//	buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7], buf[8], buf[9], buf[10]);
+				printf("Attempting USB connection\n");
+
+				// it's usb!
+				is_usb = true;
+
+				init_usb();
+				return 1;
+
+				break;
+			}
+			printf("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
+				buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7], buf[8], buf[9], buf[10]);
+			printf("Not a USB response...\n");
+		}
+		memset(buf, 0, 0x40);
+		//if (hid_exchange(this->handle, buf, 2))
+		//{
+		//	printf("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
+		//		buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7], buf[8], buf[9], buf[10]);
+		//	printf("Attempting USB connection\n");
+		//	// it's usb!
+		//	is_usb = true;
+		//
+		//	init_usb();
+		//	return 1;
+		//}
+		buf[1] = 0x00;
+
+		// Enable vibration
+		printf("Enabling vibration...\n");
+		buf[0] = 0x01; // Enabled
+		send_subcommand(0x1, 0x48, buf, 1);
+
+		//printf("Set vibration\n");
+
+		// Enable IMU data
+		printf("Enabling IMU data...\n");
+		buf[0] = 0x01; // Enabled
+		send_subcommand(0x01, 0x40, buf, 1);
+
+
+		// Set input report mode (to push at 60hz)
+		// x00	Active polling mode for IR camera data. Answers with more than 300 bytes ID 31 packet
+		// x01	Active polling mode
+		// x02	Active polling mode for IR camera data.Special IR mode or before configuring it ?
+		// x21	Unknown.An input report with this ID has pairing or mcu data or serial flash data or device info
+		// x23	MCU update input report ?
+		// 30	NPad standard mode. Pushes current state @60Hz. Default in SDK if arg is not in the list
+		// 31	NFC mode. Pushes large packets @60Hz
+		printf("Set input report mode to 0x30...\n");
+		buf[0] = 0x30;
+		send_subcommand(0x01, 0x03, buf, 1);
+
+		// @CTCaer
+
+		// get calibration data:
+		printf("Getting calibration data...\n");
+		get_switch_controller_info();
 
 		return 0;
 	}
@@ -898,74 +1025,6 @@ public:
 		//sensor_cal[1][2] = 0;
 	}
 
-	void init_usb() {
-		unsigned char buf[0x400];
-		memset(buf, 0, 0x400);
-
-		// set blocking:
-		// this insures we get the MAC Address
-		hid_set_nonblocking(this->handle, 0);
-
-		//Get MAC Left
-		//printf("Getting MAC...\n");
-		memset(buf, 0x00, 0x40);
-		buf[0] = 0x80;
-		buf[1] = 0x01;
-		hid_exchange(this->handle, buf, 0x2);
-
-		//if (buf[2] == 0x3) {
-		//	printf("%s disconnected!\n", this->name.c_str());
-		//}
-		//else {
-		//	printf("Found %s, MAC: %02x:%02x:%02x:%02x:%02x:%02x\n", this->name.c_str(), buf[9], buf[8], buf[7], buf[6], buf[5], buf[4]);
-		//}
-
-		// set non-blocking:
-		//hid_set_nonblocking(jc->handle, 1);
-
-		// Do handshaking
-		//printf("Doing handshake...\n");
-		memset(buf, 0x00, 0x40);
-		buf[0] = 0x80;
-		buf[1] = 0x02;
-		hid_exchange(this->handle, buf, 0x2);
-
-		// Switch baudrate to 3Mbit
-		//printf("Switching baudrate...\n");
-		memset(buf, 0x00, 0x40);
-		buf[0] = 0x80;
-		buf[1] = 0x03;
-		hid_exchange(this->handle, buf, 0x2);
-
-		//Do handshaking again at new baudrate so the firmware pulls pin 3 low?
-		//printf("Doing handshake...\n");
-		memset(buf, 0x00, 0x40);
-		buf[0] = 0x80;
-		buf[1] = 0x02;
-		hid_exchange(this->handle, buf, 0x2);
-
-		//Only talk HID from now on
-		//printf("Only talk HID...\n");
-		memset(buf, 0x00, 0x40);
-		buf[0] = 0x80;
-		buf[1] = 0x04;
-		hid_exchange(this->handle, buf, 0x2);
-
-		// Enable vibration
-		//printf("Enabling vibration...\n");
-		memset(buf, 0x00, 0x400);
-		buf[0] = 0x01; // Enabled
-		send_subcommand(0x1, 0x48, buf, 1);
-
-		// Enable IMU data
-		//printf("Enabling IMU data...\n");
-		memset(buf, 0x00, 0x400);
-		buf[0] = 0x01; // Enabled
-		send_subcommand(0x1, 0x40, buf, 1);
-
-		//printf("Successfully initialized %s!\n", this->name.c_str());
-	}
-
 	void deinit_ds4_bt() {
 		// TODO. For now, init, which stops rumbling and disables light
 		init_ds4_bt();
@@ -1126,7 +1185,7 @@ public:
 	}
 
 	// SPI (@CTCaer):
-	int get_spi_data(uint32_t offset, const uint16_t read_len, uint8_t *test_buf) {
+	bool get_spi_data(uint32_t offset, const uint16_t read_len, uint8_t *test_buf) {
 		int res;
 		uint8_t buf[0x100];
 		while (1) {
@@ -1152,7 +1211,11 @@ public:
 
 			res = hid_write(handle, buf, sizeof(*hdr) + sizeof(*pkt));
 
-			res = hid_read(handle, buf, sizeof(buf));
+			res = hid_read_timeout(handle, buf, sizeof(buf), 1000);
+			if (res == 0)
+			{
+				return false;
+			}
 
 			if ((*(uint16_t*)&buf[0xD] == 0x1090) && (*(uint32_t*)&buf[0xF] == offset)) {
 				break;
@@ -1164,7 +1227,7 @@ public:
 			}
 		}
 
-		return 0;
+		return true;
 	}
 
 	int write_spi_data(uint32_t offset, const uint16_t write_len, uint8_t* test_buf) {

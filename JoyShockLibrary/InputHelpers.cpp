@@ -6,6 +6,12 @@
 bool handle_input(JoyShock *jc, uint8_t *packet, int len) {
 	if (packet[0] == 0) return false; // ignore non-responses
 									  // remember last input
+
+	//printf("%d: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
+	//	jc->left_right,
+	//	packet[0], packet[1], packet[2], packet[3], packet[4], packet[5], packet[6], packet[7], packet[8], packet[9],
+	//	packet[10], packet[11], packet[12], packet[13], packet[14], packet[15], packet[16], packet[17], packet[18], packet[19], packet[20]);
+
 	jc->last_simple_state = jc->simple_state;
 	jc->simple_state.buttons = 0;
 	jc->last_imu_state = jc->imu_state;
@@ -124,7 +130,8 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len) {
 
 		// offset for usb or bluetooth data:
 		/*int offset = settings.usingBluetooth ? 0 : 10;*/
-		int offset = !jc->is_usb ? 0 : 10;
+		int offset = 0;
+		//int offset = !jc->is_usb ? 0 : 10;
 
 		uint8_t *btn_data = packet + offset + 3;
 
@@ -198,6 +205,9 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len) {
 		else if (jc->left_right == 3) {
 			// pro controller
 			stick_data += 6;
+			//printf("%d, %d\n",
+			//	jc->stick_cal_x_l,
+			//	jc->stick_cal_y_l);
 			uint16_t stick_x = stick_data[0] | ((stick_data[1] & 0xF) << 8);
 			uint16_t stick_y = (stick_data[1] >> 4) | (stick_data[2] << 4);
 			jc->CalcAnalogStick2(jc->simple_state.stickLX, jc->simple_state.stickLY,
