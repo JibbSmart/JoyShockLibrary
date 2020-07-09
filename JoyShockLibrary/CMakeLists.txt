@@ -25,16 +25,18 @@ if (WIN32)
         -D_USRDLL
     )
 
-    if (CMAKE_GENERATOR_PLATFORM STREQUAL "Win32")
+    if (CMAKE_SIZEOF_VOID_P EQUAL 4)
         target_link_libraries (
             ${PROJECT_NAME} PRIVATE
             ${CMAKE_CURRENT_SOURCE_DIR}/hidapi/objs/x86/hid.obj
         )
-    else ()
+    elseif (CMAKE_SIZEOF_VOID_P  EQUAL 8)
         target_link_libraries (
             ${PROJECT_NAME} PRIVATE
             ${CMAKE_CURRENT_SOURCE_DIR}/hidapi/objs/x64/hid.obj
         )
+    else ()
+        message (FATAL_ERROR "Unsupported architecture")
     endif ()
 endif ()
 
