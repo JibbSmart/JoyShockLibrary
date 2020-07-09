@@ -3,7 +3,8 @@
 
 #include <cmath>
 
-bool handle_input(JoyShock *jc, uint8_t *packet, int len) {
+bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
+	hasIMU = true;
 	if (packet[0] == 0) return false; // ignore non-responses
 									  // remember last input
 
@@ -39,6 +40,13 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len) {
 			int16_t accelSampleX = uint16_to_int16(packet[indexOffset+19] | (packet[indexOffset+20] << 8) & 0xFF00);
 			int16_t accelSampleY = uint16_to_int16(packet[indexOffset+21] | (packet[indexOffset+22] << 8) & 0xFF00);
 			int16_t accelSampleZ = uint16_to_int16(packet[indexOffset+23] | (packet[indexOffset+24] << 8) & 0xFF00);
+
+			if ((gyroSampleX | gyroSampleY | gyroSampleZ | accelSampleX | accelSampleY | accelSampleZ) == 0)
+			{
+				// all zero?
+				hasIMU = false;
+			}
+
 			// convert to real units
 			jc->imu_state.gyroX = (float)(gyroSampleY) * -(2000.0 / 32767.0);
 			jc->imu_state.gyroY = (float)(gyroSampleZ) * (2000.0 / 32767.0);
@@ -238,6 +246,13 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len) {
 			int16_t gyroSampleX = uint16_to_int16(packet[19] | (packet[20] << 8) & 0xFF00);
 			int16_t gyroSampleY = uint16_to_int16(packet[21] | (packet[22] << 8) & 0xFF00);
 			int16_t gyroSampleZ = uint16_to_int16(packet[23] | (packet[24] << 8) & 0xFF00);
+
+			if ((gyroSampleX | gyroSampleY | gyroSampleZ | accelSampleX | accelSampleY | accelSampleZ) == 0)
+			{
+				// all zero?
+				hasIMU = false;
+			}
+
 			//jc->push_sensor_samples(accelSampleX, accelSampleY, accelSampleZ, gyroSampleX, gyroSampleY, gyroSampleZ);
 			float accelX = accelSampleX;
 			float accelY = accelSampleY;

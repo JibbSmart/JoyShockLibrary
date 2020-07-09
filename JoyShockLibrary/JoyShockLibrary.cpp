@@ -42,26 +42,80 @@ void pollIndividualLoop(JoyShock *jc) {
 	hid_set_nonblocking(jc->handle, 0);
 	//hid_set_nonblocking(jc->handle, 1); // temporary, to see if it helps. this means we'll have a crazy spin
 
+	int numTimeOuts = 0;
+	int numNoIMU = 0;
+	bool hasIMU = false;
+
 	while (!jc->cancel_thread) {
 		// get input:
 		unsigned char buf[64];
 		memset(buf, 0, 64);
 
+		// 10 seconds of no signal means forget this controller
 		int res = hid_read_timeout(jc->handle, buf, 64, 1000);
 
 		if (res == 0)
 		{
-			printf("Controller %d timed out\n", jc->handle);
-			break;
-		}
-		// we want to be able to do these check-and-calls without fear of interruption by another thread. there could be many threads (as many as connected controllers),
-		// and the callback could be time-consuming (up to the user), so we use a readers-writer-lock.
-		if (handle_input(jc, buf, 64) && _pollCallback != nullptr) { // but the user won't necessarily have a callback at all, so we'll skip the lock altogether in that case
-			_callbackLock.lock_shared();
-			if (_pollCallback != nullptr) {
-				_pollCallback(jc->intHandle, jc->simple_state, jc->last_simple_state, jc->imu_state, jc->last_imu_state, jc->delta_time);
+			numTimeOuts++;
+			if (numTimeOuts == 10)
+			{
+				printf("Controller %d timed out\n", jc->handle);
+				break;
 			}
-			_callbackLock.unlock_shared();
+			else
+			{
+				// try wake up the controller with the appropriate message
+				if (jc->is_ds4)
+				{
+					// TODO
+				}
+				else
+				{
+					if (jc->is_usb)
+					{
+						printf("Attempting to re-initialise controller %d\n", jc->handle);
+						if (jc->init_usb())
+						{
+							numTimeOuts = 0;
+						}
+					}
+					else
+					{
+						printf("Attempting to re-initialise controller %d\n", jc->handle);
+						if (jc->init_bt())
+						{
+							numTimeOuts = 0;
+						}
+					}
+				}
+			}
+		}
+		else
+		{
+			numTimeOuts = 0;
+			// we want to be able to do these check-and-calls without fear of interruption by another thread. there could be many threads (as many as connected controllers),
+			// and the callback could be time-consuming (up to the user), so we use a readers-writer-lock.
+			if (handle_input(jc, buf, 64, hasIMU) && _pollCallback != nullptr) { // but the user won't necessarily have a callback at all, so we'll skip the lock altogether in that case
+				_callbackLock.lock_shared();
+				if (_pollCallback != nullptr) {
+					_pollCallback(jc->intHandle, jc->simple_state, jc->last_simple_state, jc->imu_state, jc->last_imu_state, jc->delta_time);
+				}
+				_callbackLock.unlock_shared();
+				// count how many have no IMU result. We want to periodically attempt to enable IMU if it's not present
+				if (!hasIMU)
+				{
+					numNoIMU++;
+					if (numNoIMU == 100)
+					{
+						jc->enable_IMU(buf, 64);
+						numNoIMU = 0;
+					}
+				}
+				else
+				{
+					numNoIMU = 0;
+				}
+			}
 		}
 	}
 }
@@ -69,7 +123,7 @@ void pollIndividualLoop(JoyShock *jc) {
 int JslConnectDevices()
 {
 	// for writing to console:
-	//freopen("CONOUT$", "w", stdout);
+	freopen("CONOUT$", "w", stdout);
 	if (_joyshocks.size() > 0) {
 		// already connected? clean up old stuff!
 		JslDisconnectAndDisposeAll();

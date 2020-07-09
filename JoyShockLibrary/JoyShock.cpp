@@ -218,11 +218,10 @@ public:
 		return result ^ 0xFFFFFFFF;
 	}
 
-	void enable_gyro_ds4_bt()
+	void enable_gyro_ds4_bt(unsigned char *buf, int bufLength)
 	{
 		// enable gyro?
-		unsigned char buf[38];
-		memset(buf, 0, 38);
+		// assume everything already zeroed
 		buf[0] = 0xa3;
 		buf[1] = 0x02;
 		buf[2] = 0x01;
@@ -263,6 +262,7 @@ public:
 		//buf[37] = 0x00;
 
 		hid_write(handle, buf, 38);
+		hid_read_timeout(handle, buf, bufLength, 100);
 	}
 
 public:
@@ -314,11 +314,9 @@ public:
 			unsigned char buf[64];
 			memset(buf, 0, 64);
 
-			enable_gyro_ds4_bt();
-			// consume response
-			hid_read_timeout(handle, buf, 64, 100);
+			enable_gyro_ds4_bt(buf, 64);
 
-			hid_read_timeout(handle, buf, 64, 20);
+			hid_read_timeout(handle, buf, 64, 100);
 			// choose between BT and USB
 			if (buf[0] == 0x11) {
 				this->is_usb = false;
@@ -533,7 +531,9 @@ public:
 		send_command(0x10, (uint8_t*)buf, 0x9);
 	}
 
-	void get_switch_controller_info() {
+	bool get_switch_controller_info() {
+		bool result = false;
+
 		memset(factory_stick_cal, 0, 0x12);
 		memset(device_colours, 0, 0xC);
 		memset(user_stick_cal, 0, 0x16);
@@ -550,14 +550,14 @@ public:
 		memset(stick_cal_y_r, 0, sizeof(stick_cal_y_r));
 
 
-		get_spi_data(0x6020, 0x18, factory_sensor_cal);
-		get_spi_data(0x603D, 0x12, factory_stick_cal);
-		get_spi_data(0x6050, 0xC, device_colours);
-		get_spi_data(0x6080, 0x6, sensor_model);
-		get_spi_data(0x6086, 0x12, stick_model);
-		get_spi_data(0x6098, 0x12, &stick_model[0x12]);
-		get_spi_data(0x8010, 0x16, user_stick_cal);
-		get_spi_data(0x8026, 0x1A, user_sensor_cal);
+		if (!get_spi_data(0x6020, 0x18, factory_sensor_cal)) { return false; }
+		if (!get_spi_data(0x603D, 0x12, factory_stick_cal)) { return false; }
+		if (!get_spi_data(0x6050, 0xC, device_colours)) { return false; }
+		if (!get_spi_data(0x6080, 0x6, sensor_model)) { return false; }
+		if (!get_spi_data(0x6086, 0x12, stick_model)) { return false; }
+		if (!get_spi_data(0x6098, 0x12, &stick_model[0x12])) { return false; }
+		if (!get_spi_data(0x8010, 0x16, user_stick_cal)) { return false; }
+		if (!get_spi_data(0x8026, 0x1A, user_sensor_cal)) { return false; }
 
 
 		// get stick calibration data:
@@ -700,9 +700,27 @@ public:
 
 		//hex_dump(reinterpret_cast<unsigned char*>(sensor_cal[0]), 6);
 		//hex_dump(reinterpret_cast<unsigned char*>(sensor_cal[1]), 6);
+
+		return true;
 	}
 
-	void init_usb() {
+	void enable_IMU(unsigned char *buf, int bufLength) {
+		memset(buf, 0, bufLength);
+
+		// Enable IMU data
+		printf("Enabling IMU data...\n");
+		if (is_ds4)
+		{
+			enable_gyro_ds4_bt(buf, bufLength);
+		}
+		else
+		{
+			buf[0] = 0x01; // Enabled
+			send_subcommand(0x1, 0x40, buf, 1);
+		}
+	}
+
+	bool init_usb() {
 		unsigned char buf[0x400];
 		memset(buf, 0, 0x400);
 
@@ -761,19 +779,24 @@ public:
 		buf[0] = 0x01; // Enabled
 		send_subcommand(0x1, 0x48, buf, 1);
 
-		// Enable IMU data
-		printf("Enabling IMU data...\n");
-		memset(buf, 0x00, 0x400);
-		buf[0] = 0x01; // Enabled
-		send_subcommand(0x1, 0x40, buf, 1);
+		enable_IMU(buf, 0x400);
 
 		printf("Getting calibration data...\n");
-		get_switch_controller_info();
+		bool result = get_switch_controller_info();
 
-		printf("Successfully initialized %s!\n", this->name.c_str());
+		if (result)
+		{
+			printf("Successfully initialized %s!\n", this->name.c_str());
+		}
+		else
+		{
+			printf("Could not initialise %s! Will try again later.\n", this->name.c_str());
+		}
+		return result;
 	}
 
-	int init_bt() {
+	bool init_bt() {
+		bool result = true;
 		unsigned char buf[0x40];
 		memset(buf, 0, 0x40);
 		printf("Initialising Bluetooth connection...\n");
@@ -828,10 +851,7 @@ public:
 		//printf("Set vibration\n");
 
 		// Enable IMU data
-		printf("Enabling IMU data...\n");
-		buf[0] = 0x01; // Enabled
-		send_subcommand(0x01, 0x40, buf, 1);
-
+		enable_IMU(buf, 0x40);
 
 		// Set input report mode (to push at 60hz)
 		// x00	Active polling mode for IR camera data. Answers with more than 300 bytes ID 31 packet
@@ -849,9 +869,9 @@ public:
 
 		// get calibration data:
 		printf("Getting calibration data...\n");
-		get_switch_controller_info();
+		result = get_switch_controller_info();
 
-		return 0;
+		return result;
 	}
 
 	void init_ds4_bt() {
@@ -874,8 +894,8 @@ public:
 		buf[7] = 0xFF;
 		buf[8] = 0x00;
 		// colour
-		buf[9] = 0xFF; // 0x00;
-		buf[10] = 0x80; // 0x00;
+		buf[9] = 0x00;
+		buf[10] = 0x00;
 		buf[11] = 0x00;
 		// flash time
 		buf[12] = 0xff;
