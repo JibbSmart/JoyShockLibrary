@@ -1,5 +1,5 @@
 add_library (
-    ${PROJECT_NAME} SHARED
+    ${PROJECT_NAME}
     JoyShockLibrary.cpp    JoyShockLibrary.h
 )
 
