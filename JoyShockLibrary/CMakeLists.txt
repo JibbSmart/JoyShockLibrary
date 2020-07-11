@@ -25,6 +25,13 @@ if (WIN32)
         -D_USRDLL
     )
 
+    if (MSVC)
+        target_compile_options (
+            ${PROJECT_NAME} PRIVATE
+            $<$<CONFIG:Debug>:/MD>
+        )
+    endif ()
+
     if (CMAKE_SIZEOF_VOID_P EQUAL 4)
         target_link_libraries (
             ${PROJECT_NAME} PRIVATE
