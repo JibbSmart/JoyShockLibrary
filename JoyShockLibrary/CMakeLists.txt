@@ -9,50 +9,6 @@ target_include_directories (
 )
 
 target_link_libraries (
-    ${PROJECT_NAME} PRIVATE
+    ${PROJECT_NAME} ${JSL_PLATFORM_DEPENDENCY_VISIBILITY}
+    JSL_Platform::Dependencies
 )
-
-if (WIN32)
-    target_include_directories (
-        ${PROJECT_NAME} PRIVATE
-        hidapi
-    )
-
-    target_compile_definitions (
-        ${PROJECT_NAME} PRIVATE
-        -DGYROCONTROLLERLIBRARY_EXPORTS
-        -D_WINDOWS
-        -D_USRDLL
-    )
-
-    if (MSVC)
-        target_compile_options (
-            ${PROJECT_NAME} PRIVATE
-            $<$<CONFIG:Debug>:/MD>
-        )
-    endif ()
-
-    if (CMAKE_SIZEOF_VOID_P EQUAL 4)
-        target_link_libraries (
-            ${PROJECT_NAME} PRIVATE
-            ${CMAKE_CURRENT_SOURCE_DIR}/hidapi/objs/x86/hid.obj
-        )
-    elseif (CMAKE_SIZEOF_VOID_P  EQUAL 8)
-        target_link_libraries (
-            ${PROJECT_NAME} PRIVATE
-            ${CMAKE_CURRENT_SOURCE_DIR}/hidapi/objs/x64/hid.obj
-        )
-    else ()
-        message (FATAL_ERROR "Unsupported architecture")
-    endif ()
-endif ()
-
-if (UNIX AND NOT APPLE)
-    find_package (PkgConfig QUIET REQUIRED)
-    pkg_search_module (HIDAPI REQUIRED IMPORTED_TARGET hidapi-hidraw)
-
-    target_link_libraries (
-        ${PROJECT_NAME} PUBLIC
-        PkgConfig::HIDAPI
-    )
-endif ()
