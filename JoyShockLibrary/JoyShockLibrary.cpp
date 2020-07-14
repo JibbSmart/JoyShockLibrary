@@ -1,8 +1,6 @@
 // JoyShockLibrary.cpp : Defines the exported functions for the DLL application.
 //
 
-#pragma comment (lib, "Setupapi.lib")
-
 #include "JoyShockLibrary.h"
 #include <bitset>
 #include "hidapi.h"
