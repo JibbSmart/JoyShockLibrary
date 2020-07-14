@@ -1,11 +1,17 @@
 if (WIN32)
-    include (cmake/CPM.cmake)
+	enable_language (C)
 
     set (WINDOWS ON)
     set_property (GLOBAL PROPERTY USE_FOLDERS ON)
 
+    include (cmake/CPM.cmake)
+
     if (MSVC)
         # Statically link the runtime libraries
+		set (CMAKE_C_FLAGS "/DWIN32 /D_WINDOWS /W3")
+		set (CMAKE_C_FLAGS_DEBUG "/MTd /Zi /Ob0 /Od /RTC1")
+		set (CMAKE_C_FLAGS_RELEASE "/MT /O2 /Ob2 /DNDEBUG")
+
         set (
             MSVC_COMPILE_FLAGS
             CMAKE_CXX_FLAGS
@@ -16,7 +22,7 @@ if (WIN32)
             CMAKE_C_FLAGS_RELEASE
         )
         foreach (FLAG ${MSVC_COMPILE_FLAGS})
-            string(REPLACE "/MD" "/MT" ${FLAG} "${${FLAG}}")
+            string (REPLACE "/MD" "/MT" ${FLAG} "${${FLAG}}")
         endforeach ()
     endif ()
 
@@ -45,8 +51,6 @@ if (WIN32)
     )
 
     if (hidapi_ADDED)
-        enable_language (C)
-
         add_library (
             hidapi STATIC
             ${hidapi_SOURCE_DIR}/windows/hid.c
