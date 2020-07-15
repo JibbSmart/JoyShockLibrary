@@ -126,11 +126,12 @@ The Nintendo devices report every 15ms, but their IMUs actually report every 5ms
 In a future version I hope to either combine the 3 rotations in a way that works better in 3D, or to add a way for a single controller event to report several IMU events at the same time.
 
 ## Credits
-I'm Jibb Smart, and I made JoyShockLibrary.
+I'm Jibb Smart, and I made JoyShockLibrary. JoyShockLibrary has also benefited from the contributions of:
+* Romeo Calota (Linux support + general portability improvements)
 
 JoyShockLibrary uses substantial portions of mfosse's [JoyCon-Driver](https://github.com/mfosse/JoyCon-Driver), a [vJoy](http://vjoystick.sourceforge.net/site/) feeder for most communication with Nintendo devices, building on it with info from dekuNukem's [Nintendo Switch Reverse Engineering](https://github.com/dekuNukem/Nintendo_Switch_Reverse_Engineering/) page in order to (for example) unpack all gyro and accelerometer samples from each report.
 
-JoyShockLibrary's DualShock 4 support would likely not be possible without the info available on [PSDevWiki](https://www.psdevwiki.com/ps4/Main_Page) and [Eleccelerator Wiki](http://eleccelerator.com/wiki/index.php?title=DualShock_4). chrippa's [ds4drv](https://github.com/chrippa/ds4drv) was also a handy reference for getting rumble and lights working right away.
+JoyShockLibrary's DualShock 4 support would likely not be possible without the info available on [PSDevWiki](https://www.psdevwiki.com/ps4/Main_Page) and [Eleccelerator Wiki](http://eleccelerator.com/wiki/index.php?title=DualShock_4). chrippa's [ds4drv](https://github.com/chrippa/ds4drv) was also a handy reference for getting rumble and lights working right away, and some changes have been made while referencing Ryochan7's [DS4Windows](https://github.com/Ryochan7/DS4Windows).
 
 This software also relies on and links signal11's [HIDAPI](https://github.com/signal11/hidapi) to connect to USB and Bluetooth devices. Since HIDAPI is linked statically, .objs are included. Since .objs may need to be compiled with the same compiler version as the dll itself, HIDAPI itself is included in a .zip.
 
