@@ -45,6 +45,8 @@ void pollIndividualLoop(JoyShock *jc) {
 	int numTimeOuts = 0;
 	int numNoIMU = 0;
 	bool hasIMU = false;
+	int noIMULimit = jc->is_ds4 ? 250 : 67;
+	float wakeupTimer = 0.0f;
 
 	while (!jc->cancel_thread) {
 		// get input:
@@ -105,8 +107,9 @@ void pollIndividualLoop(JoyShock *jc) {
 				if (!hasIMU)
 				{
 					numNoIMU++;
-					if (numNoIMU == 100)
+					if (numNoIMU == noIMULimit)
 					{
+						memset(buf, 0, 64);
 						jc->enable_IMU(buf, 64);
 						numNoIMU = 0;
 					}
@@ -114,6 +117,17 @@ void pollIndividualLoop(JoyShock *jc) {
 				else
 				{
 					numNoIMU = 0;
+				}
+				
+				// dualshock 4 bluetooth might need waking up
+				if (jc->is_ds4 && !jc->is_usb)
+				{
+					wakeupTimer += jc->delta_time;
+					if (wakeupTimer > 30.0f)
+					{
+						jc->init_ds4_bt();
+						wakeupTimer = 0.0f;
+					}
 				}
 			}
 		}
@@ -123,7 +137,7 @@ void pollIndividualLoop(JoyShock *jc) {
 int JslConnectDevices()
 {
 	// for writing to console:
-	freopen("CONOUT$", "w", stdout);
+	//freopen("CONOUT$", "w", stdout);
 	if (_joyshocks.size() > 0) {
 		// already connected? clean up old stuff!
 		JslDisconnectAndDisposeAll();

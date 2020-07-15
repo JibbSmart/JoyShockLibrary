@@ -262,7 +262,7 @@ public:
 		//buf[37] = 0x00;
 
 		hid_write(handle, buf, 38);
-		hid_read_timeout(handle, buf, bufLength, 100);
+		//hid_read_timeout(handle, buf, bufLength, 100);
 	}
 
 public:
@@ -711,7 +711,15 @@ public:
 		printf("Enabling IMU data...\n");
 		if (is_ds4)
 		{
-			enable_gyro_ds4_bt(buf, bufLength);
+			if (is_usb)
+			{
+				init_ds4_bt();
+				enable_gyro_ds4_bt(buf, bufLength);
+			}
+			else
+			{
+				init_ds4_usb();
+			}
 		}
 		else
 		{
@@ -825,8 +833,8 @@ public:
 
 				break;
 			}
-			printf("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
-				buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7], buf[8], buf[9], buf[10]);
+			//printf("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
+			//	buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7], buf[8], buf[9], buf[10]);
 			printf("Not a USB response...\n");
 		}
 		memset(buf, 0, 0x40);
@@ -876,36 +884,47 @@ public:
 
 	void init_ds4_bt() {
 		printf("initialise, set colour\n");
-		unsigned char buf[79];
-		memset(buf, 0, 79);
+		unsigned char buf[78];
+		memset(buf, 0, 78);
 
-		// https://github.com/chrippa/ds4drv/blob/master/ds4drv/device.py
-		buf[0] = 0xa2; // 0x80;
-		//buf[1] = 0xff;
-		// trying to do colour stuff
-		// http://eleccelerator.com/wiki/index.php?title=DualShock_4
-		// this is only for bt
-		buf[1] = 0x11;
-		buf[2] = 0xc0;
-		buf[3] = 0x20;
-		buf[4] = 0xf3;
-		buf[5] = 0x04;
-		// rumble
-		buf[7] = 0xFF;
-		buf[8] = 0x00;
-		// colour
-		buf[9] = 0x00;
-		buf[10] = 0x00;
-		buf[11] = 0x00;
-		// flash time
-		buf[12] = 0xff;
-		buf[13] = 0x00;
-		// now we need a CRC-32 of previous bytes
-		uint32_t crc = crc_32(buf, 75);
-		buf[75] = (crc >> 24) & 0xFF;
-		buf[76] = (crc >> 16) & 0xFF;
-		buf[77] = (crc >> 8) & 0xFF;
-		buf[78] = crc & 0xFF;
+		//buf[0] = 0x11;
+		//buf[1] = 0x80;
+		//buf[3] = 0xff;
+
+		// https://github.com/Ryochan7/DS4Windows/blob/jay/DS4Windows/DS4Library/DS4Device.cs
+		buf[0] = 0x15;
+		buf[1] = 0xC0 | 1;
+		buf[2] = 0xA0;
+		buf[3] = 0xf7;
+		buf[4] = 0x04;
+
+		//// https://github.com/chrippa/ds4drv/blob/master/ds4drv/device.py
+		//buf[0] = 0xa2; // 0x80;
+		////buf[1] = 0xff;
+		//// trying to do colour stuff
+		//// http://eleccelerator.com/wiki/index.php?title=DualShock_4
+		//// this is only for bt
+		//buf[1] = 0x11;
+		//buf[2] = 0xc0;
+		//buf[3] = 0x20;
+		//buf[4] = 0xf3;
+		//buf[5] = 0x04;
+		//// rumble
+		//buf[7] = 0xFF;
+		//buf[8] = 0x00;
+		//// colour
+		//buf[9] = 0x00;
+		//buf[10] = 0x00;
+		//buf[11] = 0x00;
+		//// flash time
+		//buf[12] = 0xff;
+		//buf[13] = 0x00;
+		//// now we need a CRC-32 of previous bytes
+		//uint32_t crc = crc_32(buf, 75);
+		//buf[75] = (crc >> 24) & 0xFF;
+		//buf[76] = (crc >> 16) & 0xFF;
+		//buf[77] = (crc >> 8) & 0xFF;
+		//buf[78] = crc & 0xFF;
 
 		//// https://github.com/chrippa/ds4drv/blob/master/ds4drv/device.py
 		//buf[0] = 0x80;
@@ -935,7 +954,7 @@ public:
 		// this insures we get the MAC Address
 		hid_set_nonblocking(this->handle, 0);
 
-		hid_write(handle, buf, 79);
+		hid_write(handle, buf, 78);
 
 		// initialise stuff
 		memset(factory_stick_cal, 0, 0x12);
@@ -973,6 +992,8 @@ public:
 		//sensor_cal[1][0] = 0;
 		//sensor_cal[1][1] = 0;
 		//sensor_cal[1][2] = 0;
+
+		enable_gyro_ds4_bt(buf, 78);
 	}
 
 	// this is mostly copied from init_usb() below, but modified to speak DS4
@@ -983,20 +1004,21 @@ public:
 		// report id?
 		buf[0] = 0x05;
 		// I dunno what this is
-		buf[1] = 0xff;
-		// http://eleccelerator.com/wiki/index.php?title=DualShock_4
-		// https://github.com/chrippa/ds4drv/blob/master/ds4drv/device.py
-		// rumble
-		buf[4] = 0x00;
-		buf[5] = 0x00;
-		// colour
-		buf[6] = 0x00;
-		//buf[7] = 0xff;
-		buf[7] = 0x00;
-		buf[8] = 0x00;
-		// flash time
-		buf[9] = 0xff;
-		buf[10] = 0x00;
+		buf[1] = 0xf7;
+		buf[2] = 0x04;
+		//// http://eleccelerator.com/wiki/index.php?title=DualShock_4
+		//// https://github.com/chrippa/ds4drv/blob/master/ds4drv/device.py
+		//// rumble
+		//buf[4] = 0x00;
+		//buf[5] = 0x00;
+		//// colour
+		//buf[6] = 0x00;
+		////buf[7] = 0xff;
+		//buf[7] = 0x00;
+		//buf[8] = 0x00;
+		//// flash time
+		//buf[9] = 0xff;
+		//buf[10] = 0x00;
 		// now we need a CRC-32 of previous bytes
 		//uint32_t = crc_32(buf, 75);
 		//buf[75] = 
