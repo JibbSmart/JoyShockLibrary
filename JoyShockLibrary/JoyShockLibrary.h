@@ -85,6 +85,17 @@ typedef struct IMU_STATE {
 	float gyroZ;
 } IMU_STATE;
 
+typedef struct TOUCH_STATE {
+	int t0Id;
+	int t1Id;
+	bool t0Down;
+	bool t1Down;
+	float t0X;
+	float t0Y;
+	float t1X;
+	float t1Y;
+} TOUCH_STATE;
+
 extern "C" JOY_SHOCK_API int JslConnectDevices();
 extern "C" JOY_SHOCK_API int JslGetConnectedDeviceHandles(int* deviceHandleArray, int size);
 extern "C" JOY_SHOCK_API void JslDisconnectAndDisposeAll();
@@ -111,9 +122,10 @@ extern "C" JOY_SHOCK_API void JslDisconnectAndDisposeAll();
 // 0x20000: capture / touchpad-click
 // 0x40000: SL
 // 0x80000: SR
-// These are the best way to get all the buttons/triggers/sticks or gyro/accelerometer (IMU)
+// These are the best way to get all the buttons/triggers/sticks, gyro/accelerometer (IMU) or touchpad
 extern "C" JOY_SHOCK_API JOY_SHOCK_STATE JslGetSimpleState(int deviceId);
 extern "C" JOY_SHOCK_API IMU_STATE JslGetIMUState(int deviceId);
+extern "C" JOY_SHOCK_API TOUCH_STATE JslGetTouchState(int deviceId);
 
 extern "C" JOY_SHOCK_API int JslGetButtons(int deviceId);
 
@@ -137,6 +149,13 @@ extern "C" JOY_SHOCK_API float JslGetAccelX(int deviceId);
 extern "C" JOY_SHOCK_API float JslGetAccelY(int deviceId);
 extern "C" JOY_SHOCK_API float JslGetAccelZ(int deviceId);
 
+// get touchpad
+extern "C" JOY_SHOCK_API int JslGetTouchId(int deviceId, bool secondTouch = false);
+extern "C" JOY_SHOCK_API bool JslGetTouchDown(int deviceId, bool secondTouch = false);
+
+extern "C" JOY_SHOCK_API float JslGetTouchX(int deviceId, bool secondTouch = false);
+extern "C" JOY_SHOCK_API float JslGetTouchY(int deviceId, bool secondTouch = false);
+
 // analog parameters have different resolutions depending on device
 extern "C" JOY_SHOCK_API float JslGetStickStep(int deviceId);
 extern "C" JOY_SHOCK_API float JslGetTriggerStep(int deviceId);
@@ -151,6 +170,8 @@ extern "C" JOY_SHOCK_API void JslSetCalibrationOffset(int deviceId, float xOffse
 
 // this function will get called for each input event from each controller
 extern "C" JOY_SHOCK_API void JslSetCallback(void(*callback)(int, JOY_SHOCK_STATE, JOY_SHOCK_STATE, IMU_STATE, IMU_STATE, float));
+// this function will get called for each input event, even if touch data didn't update
+extern "C" JOY_SHOCK_API void JslSetTouchCallback(void(*callback)(int, TOUCH_STATE, TOUCH_STATE, float));
 
 // what kind of controller is this?
 extern "C" JOY_SHOCK_API int JslGetControllerType(int deviceId);

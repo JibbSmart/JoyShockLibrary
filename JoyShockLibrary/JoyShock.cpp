@@ -65,6 +65,9 @@ public:
 	IMU_STATE imu_state;
 	IMU_STATE last_imu_state;
 
+	TOUCH_STATE touch_state;
+	TOUCH_STATE last_touch_state;
+
 	int8_t dstick;
 	uint8_t battery;
 
