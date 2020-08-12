@@ -61,6 +61,23 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 			//printf("%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%d\n",
 			//	jc->gyro.yaw, jc->gyro.pitch, jc->gyro.roll, jc->accel.x, jc->accel.y, jc->accel.z, universal_counter++);
 
+			// Touchpad:
+			jc->last_touch_state = jc->touch_state;
+
+			jc->touch_state.t0Id = (int)(packet[indexOffset+35] & 0x7F);
+			jc->touch_state.t1Id = (int)(packet[indexOffset+39] & 0x7F);
+			jc->touch_state.t0Down = (packet[indexOffset+35] & 0x80) == 0;
+			jc->touch_state.t1Down = (packet[indexOffset+39] & 0x80) == 0;
+
+			jc->touch_state.t0X = (packet[indexOffset+36] | (packet[indexOffset+37] & 0x0F) << 8) / 1920.0f;
+			jc->touch_state.t0Y = ((packet[indexOffset+37] & 0xF0) >> 4 | packet[indexOffset+38] << 4) / 943.0f;
+			jc->touch_state.t1X = (packet[indexOffset+40] | (packet[indexOffset+41] & 0x0F) << 8) / 1920.0f;
+			jc->touch_state.t1Y = ((packet[indexOffset+41] & 0xF0) >> 4 | packet[indexOffset+42] << 4) / 943.0f;
+
+			//printf("DS4 touch: %d, %d, %d, %d, %.4f, %.4f, %.4f, %.4f\n",
+			//	jc->touch_state.t0Id, jc->touch_state.t1Id, jc->touch_state.t0Down, jc->touch_state.t1Down,
+			//	jc->touch_state.t0X, jc->touch_state.t0Y, jc->touch_state.t1X, jc->touch_state.t1Y);
+
 			// DS4 dpad is a hat...  0x08 is released, 0=N, 1=NE, 2=E, 3=SE, 4=S, 5=SW, 6=W, 7=NW
 			// http://eleccelerator.com/wiki/index.php?title=DualShock_4
 			uint8_t hat = packet[indexOffset+5] & 0x0f;

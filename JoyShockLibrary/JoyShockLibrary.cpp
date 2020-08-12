@@ -14,6 +14,7 @@
 
 std::shared_timed_mutex _callbackLock;
 void(*_pollCallback)(int, JOY_SHOCK_STATE, JOY_SHOCK_STATE, IMU_STATE, IMU_STATE, float) = nullptr;
+void(*_pollTouchCallback)(int, TOUCH_STATE, TOUCH_STATE, float) = nullptr;
 std::unordered_map<int, JoyShock*> _joyshocks;
 // https://stackoverflow.com/questions/41206861/atomic-increment-and-return-counter
 static std::atomic<int> _joyshockHandleCounter;
@@ -95,10 +96,14 @@ void pollIndividualLoop(JoyShock *jc) {
 			numTimeOuts = 0;
 			// we want to be able to do these check-and-calls without fear of interruption by another thread. there could be many threads (as many as connected controllers),
 			// and the callback could be time-consuming (up to the user), so we use a readers-writer-lock.
-			if (handle_input(jc, buf, 64, hasIMU) && _pollCallback != nullptr) { // but the user won't necessarily have a callback at all, so we'll skip the lock altogether in that case
+			if (handle_input(jc, buf, 64, hasIMU) && (_pollCallback != nullptr || (jc->is_ds4 && _pollTouchCallback != nullptr))) { // but the user won't necessarily have a callback at all, so we'll skip the lock altogether in that case
 				_callbackLock.lock_shared();
 				if (_pollCallback != nullptr) {
 					_pollCallback(jc->intHandle, jc->simple_state, jc->last_simple_state, jc->imu_state, jc->last_imu_state, jc->delta_time);
+				}
+				// touchpad will have its own callback so that it doesn't change the existing api
+				if (jc->is_ds4 && _pollTouchCallback != nullptr) {
+					_pollTouchCallback(jc->intHandle, jc->touch_state, jc->last_touch_state, jc->delta_time);
 				}
 				_callbackLock.unlock_shared();
 				// count how many have no IMU result. We want to periodically attempt to enable IMU if it's not present
@@ -348,6 +353,14 @@ IMU_STATE JslGetIMUState(int deviceId)
 	}
 	return {};
 }
+TOUCH_STATE JslGetTouchState(int deviceId)
+{
+	JoyShock* jc = GetJoyShockFromHandle(deviceId);
+	if (jc != nullptr) {
+		return jc->touch_state;
+	}
+	return {};
+}
 
 int JslGetButtons(int deviceId)
 {
@@ -462,6 +475,61 @@ float JslGetAccelZ(int deviceId)
 	return 0.0f;
 }
 
+// get touchpad
+int JslGetTouchId(int deviceId, bool secondTouch)
+{
+	JoyShock* jc = GetJoyShockFromHandle(deviceId);
+	if (jc != nullptr) {
+		if (!secondTouch) {
+			return jc->touch_state.t0Id;
+		}
+		else {
+			return jc->touch_state.t1Id;
+		}
+	}
+	return false;
+}
+bool JslGetTouchDown(int deviceId, bool secondTouch)
+{
+	JoyShock* jc = GetJoyShockFromHandle(deviceId);
+	if (jc != nullptr) {
+		if (!secondTouch) {
+			return jc->touch_state.t0Down;
+		}
+		else {
+			return jc->touch_state.t1Down;
+		}
+	}
+	return false;
+}
+
+float JslGetTouchX(int deviceId, bool secondTouch)
+{
+	JoyShock* jc = GetJoyShockFromHandle(deviceId);
+	if (jc != nullptr) {
+		if (!secondTouch) {
+			return jc->touch_state.t0X;
+		}
+		else {
+			return jc->touch_state.t1X;
+		}
+	}
+	return 0.0f;
+}
+float JslGetTouchY(int deviceId, bool secondTouch)
+{
+	JoyShock* jc = GetJoyShockFromHandle(deviceId);
+	if (jc != nullptr) {
+		if (!secondTouch) {
+			return jc->touch_state.t0Y;
+		}
+		else {
+			return jc->touch_state.t1Y;
+		}
+	}
+	return 0.0f;
+}
+
 // analog parameters have different resolutions depending on device
 float JslGetStickStep(int deviceId)
 {
@@ -542,6 +610,13 @@ void JslSetCallback(void(*callback)(int, JOY_SHOCK_STATE, JOY_SHOCK_STATE, IMU_S
 	// exclusive lock
 	_callbackLock.lock();
 	_pollCallback = callback;
+	_callbackLock.unlock();
+}
+
+// this function will get called for each input event, even if touch data didn't update
+void JslSetTouchCallback(void(*callback)(int, TOUCH_STATE, TOUCH_STATE, float)) {
+	_callbackLock.lock();
+	_pollTouchCallback = callback;
 	_callbackLock.unlock();
 }
 
