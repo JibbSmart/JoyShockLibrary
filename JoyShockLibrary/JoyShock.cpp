@@ -87,8 +87,8 @@ public:
 
 	int timing_byte = 0x0;
 
-	float acc_cal_coeff[3];
-	float gyro_cal_coeff[3];
+	float acc_cal_coeff[3] = {0.0f, 0.0f, 0.0f};
+	float gyro_cal_coeff[3] = {0.0f, 0.0f, 0.0f};
 	float cal_x[1] = { 0.0f };
 	float cal_y[1] = { 0.0f };
 
@@ -117,9 +117,9 @@ public:
 
 	// for calibration:
 	bool use_continuous_calibration = false;
-	float offset_x;
-	float offset_y;
-	float offset_z;
+	float offset_x = 0.0f;
+	float offset_y = 0.0f;
+	float offset_z = 0.0f;
 
 	// for continuous calibration
 	static const int num_gyro_average_windows = 16;
