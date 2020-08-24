@@ -85,6 +85,19 @@ typedef struct IMU_STATE {
 	float gyroZ;
 } IMU_STATE;
 
+typedef struct MOTION_STATE {
+	float quatW;
+	float quatX;
+	float quatY;
+	float quatZ;
+	float accelX;
+	float accelY;
+	float accelZ;
+	float gravX;
+	float gravY;
+	float gravZ;
+} MOTION_STATE;
+
 typedef struct TOUCH_STATE {
 	int t0Id;
 	int t1Id;
@@ -122,9 +135,10 @@ extern "C" JOY_SHOCK_API void JslDisconnectAndDisposeAll();
 // 0x20000: capture / touchpad-click
 // 0x40000: SL
 // 0x80000: SR
-// These are the best way to get all the buttons/triggers/sticks, gyro/accelerometer (IMU) or touchpad
+// These are the best way to get all the buttons/triggers/sticks, gyro/accelerometer (IMU), orientation/acceleration/gravity (Motion), or touchpad
 extern "C" JOY_SHOCK_API JOY_SHOCK_STATE JslGetSimpleState(int deviceId);
 extern "C" JOY_SHOCK_API IMU_STATE JslGetIMUState(int deviceId);
+extern "C" JOY_SHOCK_API MOTION_STATE JslGetMotionState(int deviceId);
 extern "C" JOY_SHOCK_API TOUCH_STATE JslGetTouchState(int deviceId);
 
 extern "C" JOY_SHOCK_API int JslGetButtons(int deviceId);

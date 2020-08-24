@@ -18,7 +18,7 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 	jc->last_imu_state = jc->imu_state;
 	// delta time
 	auto time_now = std::chrono::steady_clock::now();
-	jc->delta_time = ((float)std::chrono::duration_cast<std::chrono::microseconds>(time_now - jc->last_polled).count()) / 1000000.0;
+	jc->delta_time = (float)(std::chrono::duration_cast<std::chrono::microseconds>(time_now - jc->last_polled).count() / 1000000.0);
 	jc->last_polled = time_now;
 	// ds4
 	if (jc->is_ds4) {
@@ -34,9 +34,9 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 		if (isValid) {
 			// Gyroscope:
 			// Gyroscope data is relative (degrees/s)
-			int16_t gyroSampleY = uint16_to_int16(packet[indexOffset+13] | (packet[indexOffset+14] << 8) & 0xFF00);
-			int16_t gyroSampleZ = uint16_to_int16(packet[indexOffset+15] | (packet[indexOffset+16] << 8) & 0xFF00);
-			int16_t gyroSampleX = uint16_to_int16(packet[indexOffset+17] | (packet[indexOffset+18] << 8) & 0xFF00);
+			int16_t gyroSampleX = uint16_to_int16(packet[indexOffset+13] | (packet[indexOffset+14] << 8) & 0xFF00);
+			int16_t gyroSampleY = uint16_to_int16(packet[indexOffset+15] | (packet[indexOffset+16] << 8) & 0xFF00);
+			int16_t gyroSampleZ = uint16_to_int16(packet[indexOffset+17] | (packet[indexOffset+18] << 8) & 0xFF00);
 			int16_t accelSampleX = uint16_to_int16(packet[indexOffset+19] | (packet[indexOffset+20] << 8) & 0xFF00);
 			int16_t accelSampleY = uint16_to_int16(packet[indexOffset+21] | (packet[indexOffset+22] << 8) & 0xFF00);
 			int16_t accelSampleZ = uint16_to_int16(packet[indexOffset+23] | (packet[indexOffset+24] << 8) & 0xFF00);
@@ -48,13 +48,13 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 			}
 
 			// convert to real units
-			jc->imu_state.gyroX = (float)(gyroSampleY) * -(2000.0 / 32767.0);
-			jc->imu_state.gyroY = (float)(gyroSampleZ) * (2000.0 / 32767.0);
-			jc->imu_state.gyroZ = (float)(gyroSampleX) * (2000.0 / 32767.0);
+			jc->imu_state.gyroX = (float)(gyroSampleX) * (2000.0 / 32767.0);
+			jc->imu_state.gyroY = (float)(gyroSampleY) * (2000.0 / 32767.0);
+			jc->imu_state.gyroZ = (float)(gyroSampleZ) * (2000.0 / 32767.0);
 
 			jc->imu_state.accelX = (float)(accelSampleX) / 8192.0;
-			jc->imu_state.accelZ = (float)(accelSampleY) / -8192.0;
-			jc->imu_state.accelY = (float)(accelSampleZ) / 8192.0;
+			jc->imu_state.accelY = (float)(accelSampleY) / 8192.0;
+			jc->imu_state.accelZ = (float)(accelSampleZ) / 8192.0;
 
 			//printf("DS4 accel: %.4f, %.4f, %.4f\n", jc->imu_state.accelX, jc->imu_state.accelY, jc->imu_state.accelZ);
 
@@ -121,8 +121,9 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 			jc->simple_state.stickRY = (std::fmin)(1.0, (stick2_y - 127.0) / 127.0);
 
 			if (jc->use_continuous_calibration) {
-				jc->push_sensor_samples(jc->imu_state.gyroX, jc->imu_state.gyroY, jc->imu_state.gyroZ);
-				jc->get_average_gyro(jc->offset_x, jc->offset_y, jc->offset_z);
+				jc->push_sensor_samples(jc->imu_state.gyroX, jc->imu_state.gyroY, jc->imu_state.gyroZ,
+					sqrtf(jc->imu_state.accelX * jc->imu_state.accelX + jc->imu_state.accelY * jc->imu_state.accelY + jc->imu_state.accelZ * jc->imu_state.accelZ));
+				jc->get_average_gyro(jc->offset_x, jc->offset_y, jc->offset_z, jc->accel_magnitude);
 			}
 
 			jc->imu_state.gyroX -= jc->offset_x;
@@ -259,9 +260,9 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 		// Accelerometer data is absolute
 		{
 			// get accelerometer X:
-			int16_t accelSampleY = uint16_to_int16(packet[13] | (packet[14] << 8) & 0xFF00);
+			int16_t accelSampleZ = uint16_to_int16(packet[13] | (packet[14] << 8) & 0xFF00);
 			int16_t accelSampleX = uint16_to_int16(packet[15] | (packet[16] << 8) & 0xFF00);
-			int16_t accelSampleZ = uint16_to_int16(packet[17] | (packet[18] << 8) & 0xFF00);
+			int16_t accelSampleY = uint16_to_int16(packet[17] | (packet[18] << 8) & 0xFF00);
 			int16_t gyroSampleX = uint16_to_int16(packet[19] | (packet[20] << 8) & 0xFF00);
 			int16_t gyroSampleY = uint16_to_int16(packet[21] | (packet[22] << 8) & 0xFF00);
 			int16_t gyroSampleZ = uint16_to_int16(packet[23] | (packet[24] << 8) & 0xFF00);
@@ -276,13 +277,13 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 			float accelX = accelSampleX;
 			float accelY = accelSampleY;
 			float accelZ = accelSampleZ;
-			float roll = gyroSampleX - jc->sensor_cal[1][0];
-			float pitch = gyroSampleY - jc->sensor_cal[1][1];
-			float yaw = gyroSampleZ - jc->sensor_cal[1][2];
+			float totalGyroX = gyroSampleX - jc->sensor_cal[1][0];
+			float totalGyroY = gyroSampleY - jc->sensor_cal[1][1];
+			float totalGyroZ = gyroSampleZ - jc->sensor_cal[1][2];
 			// each packet actually has 3 samples worth of data, so collect sample 2
-			accelSampleY = uint16_to_int16(packet[25] | (packet[26] << 8) & 0xFF00);
+			accelSampleZ = uint16_to_int16(packet[25] | (packet[26] << 8) & 0xFF00);
 			accelSampleX = uint16_to_int16(packet[27] | (packet[28] << 8) & 0xFF00);
-			accelSampleZ = uint16_to_int16(packet[29] | (packet[30] << 8) & 0xFF00);
+			accelSampleY = uint16_to_int16(packet[29] | (packet[30] << 8) & 0xFF00);
 			gyroSampleX = uint16_to_int16(packet[31] | (packet[32] << 8) & 0xFF00);
 			gyroSampleY = uint16_to_int16(packet[33] | (packet[34] << 8) & 0xFF00);
 			gyroSampleZ = uint16_to_int16(packet[35] | (packet[36] << 8) & 0xFF00);
@@ -290,13 +291,13 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 			accelX += accelSampleX;
 			accelY += accelSampleY;
 			accelZ += accelSampleZ;
-			roll += gyroSampleX - jc->sensor_cal[1][0];
-			pitch += gyroSampleY - jc->sensor_cal[1][1];
-			yaw += gyroSampleZ - jc->sensor_cal[1][2];
+			totalGyroX += gyroSampleX - jc->sensor_cal[1][0];
+			totalGyroY += gyroSampleY - jc->sensor_cal[1][1];
+			totalGyroZ += gyroSampleZ - jc->sensor_cal[1][2];
 			// ... and sample 3
-			accelSampleY = uint16_to_int16(packet[37] | (packet[38] << 8) & 0xFF00);
+			accelSampleZ = uint16_to_int16(packet[37] | (packet[38] << 8) & 0xFF00);
 			accelSampleX = uint16_to_int16(packet[39] | (packet[40] << 8) & 0xFF00);
-			accelSampleZ = uint16_to_int16(packet[41] | (packet[42] << 8) & 0xFF00);
+			accelSampleY = uint16_to_int16(packet[41] | (packet[42] << 8) & 0xFF00);
 			gyroSampleX = uint16_to_int16(packet[43] | (packet[44] << 8) & 0xFF00);
 			gyroSampleY = uint16_to_int16(packet[45] | (packet[46] << 8) & 0xFF00);
 			gyroSampleZ = uint16_to_int16(packet[47] | (packet[48] << 8) & 0xFF00);
@@ -304,28 +305,29 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 			accelX += accelSampleX;
 			accelY += accelSampleY;
 			accelZ += accelSampleZ;
-			roll += gyroSampleX - jc->sensor_cal[1][0];
-			pitch += gyroSampleY - jc->sensor_cal[1][1];
-			yaw += gyroSampleZ - jc->sensor_cal[1][2];
+			totalGyroX += gyroSampleX - jc->sensor_cal[1][0];
+			totalGyroY += gyroSampleY - jc->sensor_cal[1][1];
+			totalGyroZ += gyroSampleZ - jc->sensor_cal[1][2];
 			// average the 3 samples
 			accelX /= 3;
 			accelY /= 3;
 			accelZ /= 3;
-			roll /= 3;
-			pitch /= 3;
-			yaw /= 3;
+			totalGyroX /= 3;
+			totalGyroY /= 3;
+			totalGyroZ /= 3;
 			jc->imu_state.accelX = (float)(accelX) / -4096.0;
-			jc->imu_state.accelY = (float)(accelY) / -4096.0;
+			jc->imu_state.accelY = (float)(accelY) / 4096.0;
 			jc->imu_state.accelZ = (float)(accelZ) / -4096.0;
-			jc->imu_state.gyroZ = (float)(roll) * (2294.0 / 32767.0);
-			jc->imu_state.gyroX = (float)(pitch) * (2294.0 / 32767.0);
-			jc->imu_state.gyroY = (float)(yaw) * (2294.0 / 32767.0);
+			jc->imu_state.gyroX = -(float)(totalGyroY) * (2294.0 / 32767.0);
+			jc->imu_state.gyroY = (float)(totalGyroZ) * (2294.0 / 32767.0);
+			jc->imu_state.gyroZ = (float)(totalGyroX) * (2294.0 / 32767.0);
 
 			//printf("Switch accel: %.4f, %.4f, %.4f\n", jc->imu_state.accelX, jc->imu_state.accelY, jc->imu_state.accelZ);
 
 			if (jc->use_continuous_calibration) {
-				jc->push_sensor_samples(jc->imu_state.gyroX, jc->imu_state.gyroY, jc->imu_state.gyroZ);
-				jc->get_average_gyro(jc->offset_x, jc->offset_y, jc->offset_z);
+				jc->push_sensor_samples(jc->imu_state.gyroX, jc->imu_state.gyroY, jc->imu_state.gyroZ,
+					sqrtf(jc->imu_state.accelX* jc->imu_state.accelX + jc->imu_state.accelY * jc->imu_state.accelY + jc->imu_state.accelZ * jc->imu_state.accelZ));
+				jc->get_average_gyro(jc->offset_x, jc->offset_y, jc->offset_z, jc->accel_magnitude);
 			}
 
 			jc->imu_state.gyroX -= jc->offset_x;

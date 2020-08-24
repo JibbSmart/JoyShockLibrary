@@ -9,6 +9,7 @@
 #include <shared_mutex>
 #include <unordered_map>
 #include <atomic>
+#include "SensorFusion.cpp"
 #include "JoyShock.cpp"
 #include "InputHelpers.cpp"
 
@@ -97,6 +98,28 @@ void pollIndividualLoop(JoyShock *jc) {
 			// we want to be able to do these check-and-calls without fear of interruption by another thread. there could be many threads (as many as connected controllers),
 			// and the callback could be time-consuming (up to the user), so we use a readers-writer-lock.
 			if (handle_input(jc, buf, 64, hasIMU) && (_pollCallback != nullptr || (jc->is_ds4 && _pollTouchCallback != nullptr))) { // but the user won't necessarily have a callback at all, so we'll skip the lock altogether in that case
+				if (hasIMU)
+				{
+					if (jc->cue_motion_reset)
+					{
+						//printf("RESET motion\n");
+						jc->cue_motion_reset = false;
+						jc->motion.Reset();
+					}
+					jc->motion.Update(jc->imu_state.gyroX, jc->imu_state.gyroY, jc->imu_state.gyroZ,
+						jc->imu_state.accelX, jc->imu_state.accelY, jc->imu_state.accelZ,
+						jc->accel_magnitude, jc->delta_time);
+					//printf("gyro %.4f, %.4f, %.4f ... accel %.4f, %.4f, %.4f ... local accel %.4f, %.4f, %.4f ... grav %.4f, %.4f, %.4f ... quat %.4f, %.4f, %.4f, %.4f\n",
+					//	jc->imu_state.gyroX, jc->imu_state.gyroY, jc->imu_state.gyroZ,
+					//	jc->imu_state.accelX, jc->imu_state.accelY, jc->imu_state.accelZ,
+					//	jc->motion.Accel.x, jc->motion.Accel.y, jc->motion.Accel.z,
+					//	jc->motion.Grav.x, jc->motion.Grav.y, jc->motion.Grav.z,
+					//	jc->motion.Quaternion.w, jc->motion.Quaternion.x, jc->motion.Quaternion.y, jc->motion.Quaternion.z);
+				}
+				else
+				{
+					//printf("No IMU input detected\n");
+				}
 				_callbackLock.lock_shared();
 				if (_pollCallback != nullptr) {
 					_pollCallback(jc->intHandle, jc->simple_state, jc->last_simple_state, jc->imu_state, jc->last_imu_state, jc->delta_time);
@@ -353,6 +376,14 @@ IMU_STATE JslGetIMUState(int deviceId)
 	}
 	return {};
 }
+MOTION_STATE JslGetMotionState(int deviceId)
+{
+	JoyShock* jc = GetJoyShockFromHandle(deviceId);
+	if (jc != nullptr) {
+		return jc->get_motion_state();
+	}
+	return {};
+}
 TOUCH_STATE JslGetTouchState(int deviceId)
 {
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
@@ -580,6 +611,7 @@ void JslStartContinuousCalibration(int deviceId) {
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
 		jc->use_continuous_calibration = true;
+		jc->cue_motion_reset = true;
 	}
 }
 void JslPauseContinuousCalibration(int deviceId) {
