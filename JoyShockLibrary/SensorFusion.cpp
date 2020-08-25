@@ -286,7 +286,7 @@ struct Motion
 
 		// rotate
 		Quat rotation = Quat::AngleAxis(angle, axis.x, axis.y, axis.z);
-		Quaternion = rotation * Quaternion;
+		Quaternion *= rotation; // do it this way because it's a local rotation, not global
 		//printf("Quat: %.4f %.4f %.4f %.4f _",
 		//	Quaternion.w, Quaternion.x, Quaternion.y, Quaternion.z);
 		float accelMagnitude = accel.Length();
@@ -296,12 +296,12 @@ struct Motion
 			LastGravityIdx = (LastGravityIdx + NumGravDirectionSamples - 1) % NumGravDirectionSamples;
 			// for comparing and perhaps smoothing gravity samples, we need them to be global
 			Vec absoluteAccel = accel * Quaternion;
-			//GravDirectionSamples[LastGravityIdx] = absoluteAccel;
-			//Vec gravityMin = absoluteAccel;
-			//Vec gravityMax = absoluteAccel;
-			GravDirectionSamples[LastGravityIdx] = accel;
-			Vec gravityMin = accel;
-			Vec gravityMax = accel;
+			GravDirectionSamples[LastGravityIdx] = absoluteAccel;
+			Vec gravityMin = absoluteAccel;
+			Vec gravityMax = absoluteAccel;
+			//GravDirectionSamples[LastGravityIdx] = accel;
+			//Vec gravityMin = accel;
+			//Vec gravityMax = accel;
 			const float steadyGravityThreshold = 0.05f;
 			NumGravDirectionSamplesCounted++;
 			const int numGravSamples = NumGravDirectionSamplesCounted < NumGravDirectionSamples ? NumGravDirectionSamplesCounted : NumGravDirectionSamples;
@@ -339,7 +339,7 @@ struct Motion
 				gravityBoxSize.y <= steadyGravityThreshold &&
 				gravityBoxSize.z <= steadyGravityThreshold)
 			{
-				//absoluteAccel = gravityMin + (gravityBoxSize * 0.5f);
+				absoluteAccel = gravityMin + (gravityBoxSize * 0.5f);
 				//const Vec localGravity = -(absoluteAccel * Quaternion.Inverse());
 				const Vec gravityDirection = -absoluteAccel.Normalized();
 				//const Vec localGravityNormalized = localGravity.Normalized();
@@ -351,7 +351,7 @@ struct Motion
 
 				if (errorAngle > 0.0f)
 				{
-					const float EaseInTime = 0.125f;
+					const float EaseInTime = 0.25f;
 					TimeCorrecting += deltaTime;
 
 					//printf(" Angle Error: %.4f _ ", errorAngle);
@@ -361,17 +361,23 @@ struct Motion
 					//	expectedLocalGravity.x, expectedLocalGravity.y, expectedLocalGravity.z,
 					//	Quaternion.w, Quaternion.x, Quaternion.y, Quaternion.z);
 
-					const float tighteningThreshold = 2.0f;
+					const float tighteningThreshold = 5.0f;
+					const float maxCorrectionRate = 15.0f * deltaTime;
 
 					float confidentSmoothCorrect = errorAngle;
 					if (errorAngle < tighteningThreshold)
 					{
 						confidentSmoothCorrect *= errorAngle / tighteningThreshold;
 					}
-					confidentSmoothCorrect *= 1.0f - exp2f(-deltaTime * 4.0f);
+					//confidentSmoothCorrect *= 1.0f - exp2f(-deltaTime);
 					if (TimeCorrecting < EaseInTime)
 					{
 						confidentSmoothCorrect *= TimeCorrecting / EaseInTime;
+					}
+					confidentSmoothCorrect *= deltaTime;
+					if (confidentSmoothCorrect > maxCorrectionRate)
+					{
+						confidentSmoothCorrect = maxCorrectionRate;
 					}
 					Quaternion = Quat::AngleAxis(confidentSmoothCorrect * (float)M_PI / 180.0f, flattened.x, flattened.y, flattened.z) * Quaternion;
 				}
@@ -381,8 +387,9 @@ struct Motion
 				}
 
 				const Vec localGravityNormalized = -(absoluteAccel * Quaternion.Inverse());
-				Grav = localGravityNormalized * gravityLength;
-				Accel = accel + Grav;
+				Vec trueGrav = localGravityNormalized * gravityLength;
+				Grav = Vec(0.0f, -gravityLength, 0.0f) * Quaternion.Inverse();
+				Accel = accel + trueGrav;
 
 				//printf("NEW GRAVITY VECTOR ... ");
 			}
