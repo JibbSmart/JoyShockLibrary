@@ -386,10 +386,11 @@ struct Motion
 					TimeCorrecting = 0.0f;
 				}
 
-				const Vec localGravityNormalized = -(absoluteAccel * Quaternion.Inverse());
-				Vec trueGrav = localGravityNormalized * gravityLength;
 				Grav = Vec(0.0f, -gravityLength, 0.0f) * Quaternion.Inverse();
-				Accel = accel + trueGrav;
+				//const Vec localGravityNormalized = -(absoluteAccel * Quaternion.Inverse());
+				//Vec trueGrav = localGravityNormalized * gravityLength;
+				//Accel = accel + trueGrav;
+				Accel = accel + Grav; // gravity won't be shaky. accel might. so let's keep using the quaternion's calculated gravity vector.
 
 				//printf("NEW GRAVITY VECTOR ... ");
 			}
