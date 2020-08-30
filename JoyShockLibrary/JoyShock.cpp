@@ -60,14 +60,14 @@ public:
 	std::chrono::steady_clock::time_point last_polled;
 	float delta_time = 1.0;
 
-	JOY_SHOCK_STATE simple_state;
-	JOY_SHOCK_STATE last_simple_state;
+	JOY_SHOCK_STATE simple_state = {};
+	JOY_SHOCK_STATE last_simple_state = {};
 
-	IMU_STATE imu_state;
-	IMU_STATE last_imu_state;
+	IMU_STATE imu_state = {};
+	IMU_STATE last_imu_state = {};
 
-	TOUCH_STATE touch_state;
-	TOUCH_STATE last_touch_state;
+	TOUCH_STATE touch_state = {};
+	TOUCH_STATE last_touch_state = {};
 
 	Motion motion;
 
