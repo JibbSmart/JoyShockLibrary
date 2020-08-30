@@ -354,7 +354,7 @@ struct Motion
 					const float EaseInTime = 0.25f;
 					TimeCorrecting += deltaTime;
 
-					//printf(" Angle Error: %.4f _ ", errorAngle);
+					//printf("Angle Error: %.4f\n", errorAngle);
 					//printf("Angle Error: %.4f ... Local Gravity: %.4f, %.4f, %.4f\n             Expected Local Gravity: %.4f, %.4f, %.4f   (%.4f, %.4f, %.4f, %.4f)... ",
 					//	errorAngle,
 					//	localGravity.x, localGravity.y, localGravity.z,
@@ -362,23 +362,23 @@ struct Motion
 					//	Quaternion.w, Quaternion.x, Quaternion.y, Quaternion.z);
 
 					const float tighteningThreshold = 5.0f;
-					const float maxCorrectionRate = 15.0f * deltaTime;
+					//const float maxCorrectionRate = 15.0f * deltaTime;
 
 					float confidentSmoothCorrect = errorAngle;
-					if (errorAngle < tighteningThreshold)
-					{
-						confidentSmoothCorrect *= errorAngle / tighteningThreshold;
-					}
-					//confidentSmoothCorrect *= 1.0f - exp2f(-deltaTime);
+					//if (errorAngle < tighteningThreshold)
+					//{
+					//	confidentSmoothCorrect *= errorAngle / tighteningThreshold;
+					//}
+					confidentSmoothCorrect *= 1.0f - exp2f(-deltaTime * 4.0f);
 					if (TimeCorrecting < EaseInTime)
 					{
 						confidentSmoothCorrect *= TimeCorrecting / EaseInTime;
 					}
-					confidentSmoothCorrect *= deltaTime;
-					if (confidentSmoothCorrect > maxCorrectionRate)
-					{
-						confidentSmoothCorrect = maxCorrectionRate;
-					}
+					//confidentSmoothCorrect *= deltaTime;
+					//if (confidentSmoothCorrect > maxCorrectionRate)
+					//{
+					//	confidentSmoothCorrect = maxCorrectionRate;
+					//}
 					Quaternion = Quat::AngleAxis(confidentSmoothCorrect * (float)M_PI / 180.0f, flattened.x, flattened.y, flattened.z) * Quaternion;
 				}
 				else
