@@ -9,6 +9,7 @@ My goal with JoyShockLibrary is to enable game developers to support DS4, JoyCon
   * **[Structs](#structs)**
   * **[Functions](#functions)**
 * **[Known and Perceived Issues](#known-and-perceived-issues)**
+* **[Backwards Compatibility](#backwards-compatibility)**
 * **[Credits](#credits)**
 * **[Helpful Resources](#helpful-resources)**
 * **[License](#license)**
@@ -51,6 +52,11 @@ The latest version of JoyShockLibrary can always be found [here](https://github.
 * **float accelX, accelY, accelZ** - accelerometer X axis, Y axis, and Z axis, respectively, in g (g-force).
 * **float gyroX, gyroY, gyroZ** - gyroscope angular velocity X, Y, and Z, respectively, in dps (degrees per second), when correctly calibrated.
 
+**struct MOTION_STATE** - The MOTION_STATE reports the orientation of the device as calculated using a sensor fusion solution to combine gyro and accelerometer data.
+* **float quatW, quatX, quatY, quatZ** - a quaternion representing the orientation of the device.
+* **float accelX, accelY, accelZ** - local acceleration after accounting for and removing the effect of gravity.
+* **float gravX, gravY, gravZ** - local gravity direction.
+
 ### Functions
 
 All these functions *should* be thread-safe, and none of them should cause any harm if given the wrong handle. If they do, please report this to me as an isuse.
@@ -65,7 +71,9 @@ All these functions *should* be thread-safe, and none of them should cause any h
 
 **IMU\_STATE JslGetIMUState(int deviceId)** - Get the latest accelerometer + gyroscope state for the controller with the given id.
 
-**TOUCH_STATE JslGetTouchState(int deviceId)** - Get the latest touchpad state for the controller with the given id. Only DualShock 4s support this.
+**MOTION\_STATE JslGetMotionState(int deviceId)** - Get the latest motion state for the controller with the given id.
+
+**TOUCH\_STATE JslGetTouchState(int deviceId)** - Get the latest touchpad state for the controller with the given id. Only DualShock 4s support this.
 
 **int JslGetButtons(int deviceId)** - Get the latest button state for the controller with the given id. If you want more than just the buttons, it's more efficient to use JslGetSimpleState.
 
@@ -137,9 +145,16 @@ The Nintendo devices report every 15ms, but their IMUs actually report every 5ms
 
 In a future version I hope to either combine the 3 rotations in a way that works better in 3D, or to add a way for a single controller event to report several IMU events at the same time.
 
+## Backwards Compatibility
+JoyShockLibrary v2 changes the gyro and accelerometer axes from previous versions. Previous versions were inconsistent between gyro and accelerometer. When upgrading to JoyShockLibrary v2, in order to maintain previous behaviour:
+* Invert Gyro X
+* Swap Accel Z and Y
+* Then invert Accel Z
+
 ## Credits
 I'm Jibb Smart, and I made JoyShockLibrary. JoyShockLibrary has also benefited from the contributions of:
 * Romeo Calota (Linux support + general portability improvements)
+* RollinBarrel (touchpad support)
 
 JoyShockLibrary uses substantial portions of mfosse's [JoyCon-Driver](https://github.com/mfosse/JoyCon-Driver), a [vJoy](http://vjoystick.sourceforge.net/site/) feeder for most communication with Nintendo devices, building on it with info from dekuNukem's [Nintendo Switch Reverse Engineering](https://github.com/dekuNukem/Nintendo_Switch_Reverse_Engineering/) page in order to (for example) unpack all gyro and accelerometer samples from each report.
 
@@ -152,7 +167,7 @@ This software depends on signal11's [HIDAPI](https://github.com/signal11/hidapi)
   * Why gyro controls make gaming better;
   * How developers can do a better job implementing gyro controls;
   * How to use JoyShockLibrary;
-  * How gamers can play any PC game with gyro controls using [JoyShockMapper](https://github.com/JibbSmart/JoyShockMapper).
+  * How gamers can play any PC game with gyro controls using [JoyShockMapper](https://github.com/JibbSmart/JoyShockMapper), which uses JoyShockLibrary to read from supported controllers.
 
 ## License
 JoyShockLibrary is licensed under the MIT License - see [LICENSE.md](LICENSE.md).
