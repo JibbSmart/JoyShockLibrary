@@ -224,6 +224,7 @@ int JslConnectDevices()
 			printf("DS4\n");
 			if (cur_dev->product_id == DS4_USB ||
 				cur_dev->product_id == DS4_USB_V2 ||
+				cur_dev->product_id == DS4_USB_DONGLE ||
 				cur_dev->product_id == DS4_BT) {
 				JoyShock* jc = new JoyShock(cur_dev, GetUniqueHandle());
 				_joyshocks.emplace(jc->intHandle, jc);
