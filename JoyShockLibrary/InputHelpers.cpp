@@ -30,8 +30,8 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 		}
 		else {
 			isValid = packet[0] == 0x01;
-			if (isValid) // ignore packets from Dongle with no connected controller
-				if ((packet[31] & 0x04) == 0x04) return false;
+			if (isValid && (packet[31] & 0x04) == 0x04)
+				return false; // ignore packets from Dongle with no connected controller
 		}
 		if (isValid) {
 			// Gyroscope:
