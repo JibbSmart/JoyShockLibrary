@@ -378,6 +378,9 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 			jc->imu_state.gyroY = -jc->imu_state.gyroY;
 			jc->imu_state.gyroZ = -jc->imu_state.gyroZ;
 
+			jc->imu_state.accelX = -jc->imu_state.accelX;
+			jc->imu_state.accelY = -jc->imu_state.accelY;
+
 		}
 
 		// pro controller:
