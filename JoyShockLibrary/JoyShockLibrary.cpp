@@ -97,7 +97,7 @@ void pollIndividualLoop(JoyShock *jc) {
 			numTimeOuts = 0;
 			// we want to be able to do these check-and-calls without fear of interruption by another thread. there could be many threads (as many as connected controllers),
 			// and the callback could be time-consuming (up to the user), so we use a readers-writer-lock.
-			if (handle_input(jc, buf, 64, hasIMU) && (_pollCallback != nullptr || (jc->is_ds4 && _pollTouchCallback != nullptr))) { // but the user won't necessarily have a callback at all, so we'll skip the lock altogether in that case
+			if (handle_input(jc, buf, 64, hasIMU)) { // but the user won't necessarily have a callback at all, so we'll skip the lock altogether in that case
 				if (hasIMU)
 				{
 					if (jc->cue_motion_reset)
@@ -120,15 +120,18 @@ void pollIndividualLoop(JoyShock *jc) {
 				{
 					//printf("No IMU input detected\n");
 				}
-				_callbackLock.lock_shared();
-				if (_pollCallback != nullptr) {
-					_pollCallback(jc->intHandle, jc->simple_state, jc->last_simple_state, jc->imu_state, jc->last_imu_state, jc->delta_time);
+				if (_pollCallback != nullptr || _pollTouchCallback != nullptr)
+				{
+					_callbackLock.lock_shared();
+					if (_pollCallback != nullptr) {
+						_pollCallback(jc->intHandle, jc->simple_state, jc->last_simple_state, jc->imu_state, jc->last_imu_state, jc->delta_time);
+					}
+					// touchpad will have its own callback so that it doesn't change the existing api
+					if (jc->is_ds4 && _pollTouchCallback != nullptr) {
+						_pollTouchCallback(jc->intHandle, jc->touch_state, jc->last_touch_state, jc->delta_time);
+					}
+					_callbackLock.unlock_shared();
 				}
-				// touchpad will have its own callback so that it doesn't change the existing api
-				if (jc->is_ds4 && _pollTouchCallback != nullptr) {
-					_pollTouchCallback(jc->intHandle, jc->touch_state, jc->last_touch_state, jc->delta_time);
-				}
-				_callbackLock.unlock_shared();
 				// count how many have no IMU result. We want to periodically attempt to enable IMU if it's not present
 				if (!hasIMU)
 				{
