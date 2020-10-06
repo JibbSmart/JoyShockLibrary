@@ -22,6 +22,7 @@
 #define DS4_VENDOR 0x054C
 #define DS4_USB 0x05C4
 #define DS4_USB_V2 0x09CC
+#define DS4_USB_DONGLE 0x0BA0
 #define DS4_BT 0x081F
 
 // Joycon and Pro conroller stuff is mostly from
@@ -305,6 +306,7 @@ public:
 
 		if (dev->product_id == DS4_BT ||
 			dev->product_id == DS4_USB ||
+			dev->product_id == DS4_USB_DONGLE ||
 			dev->product_id == DS4_USB_V2) {
 			this->name = std::string("DualShock 4");
 			this->left_right = 3; // left and right?
