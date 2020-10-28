@@ -9,6 +9,7 @@
 #include <atomic>
 #include "tools.cpp"
 #include <cstring>
+#include <array> // same as [] but with vector accessors
 
 #ifdef __GNUC__
 #define _wcsdup wcsdup
@@ -76,8 +77,8 @@ public:
 	IMU_STATE imu_state = {};
 	IMU_STATE last_imu_state = {};
 
-	TOUCH_STATE touch_state = {};
-	TOUCH_STATE last_touch_state = {};
+	std::array<TOUCH_POINT, 2> touch_point; // Send point to the callbacks
+	std::array<TOUCH_STATE, 2> prev_touch_state; // Hold the prev state info
 
 	Motion motion;
 

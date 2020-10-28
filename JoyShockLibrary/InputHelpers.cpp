@@ -23,17 +23,17 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 	// ds4
 	if (jc->controller_type == ControllerType::s_ds4) {
 		int indexOffset = 0;
-		bool isValid = true;
+		bool isDown = true;
 		if (!jc->is_usb) {
-			isValid = packet[0] == 0x11;
+			isDown = packet[0] == 0x11;
 			indexOffset = 2;
 		}
 		else {
-			isValid = packet[0] == 0x01;
-			if (isValid && (packet[31] & 0x04) == 0x04)
+			isDown = packet[0] == 0x01;
+			if (isDown && (packet[31] & 0x04) == 0x04)
 				return false; // ignore packets from Dongle with no connected controller
 		}
-		if (isValid) {
+		if (isDown) {
 			// Gyroscope:
 			// Gyroscope data is relative (degrees/s)
 			int16_t gyroSampleX = uint16_to_int16(packet[indexOffset+13] | (packet[indexOffset+14] << 8) & 0xFF00);
@@ -64,21 +64,35 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 			//	jc->gyro.yaw, jc->gyro.pitch, jc->gyro.roll, jc->accel.x, jc->accel.y, jc->accel.z, universal_counter++);
 
 			// Touchpad:
-			jc->last_touch_state = jc->touch_state;
+			std::array<TOUCH_STATE, 2> current;
+			current[0].tDown = (packet[indexOffset+35] & 0x80) == 0;
+			current[0].tId = (int)(packet[indexOffset+35] & 0x7F);
+			current[0].tX = (packet[indexOffset + 36] | (packet[indexOffset + 37] & 0x0F) << 8);
+			current[0].tY = ((packet[indexOffset + 37] & 0xF0) >> 4 | packet[indexOffset + 38] << 4);
 
-			jc->touch_state.t0Id = (int)(packet[indexOffset+35] & 0x7F);
-			jc->touch_state.t1Id = (int)(packet[indexOffset+39] & 0x7F);
-			jc->touch_state.t0Down = (packet[indexOffset+35] & 0x80) == 0;
-			jc->touch_state.t1Down = (packet[indexOffset+39] & 0x80) == 0;
+			current[1].tDown = (packet[indexOffset+39] & 0x80) == 0;
+			current[1].tId = (int)(packet[indexOffset+39] & 0x7F);
+			current[1].tX = (packet[indexOffset + 40] | (packet[indexOffset + 41] & 0x0F) << 8);
+			current[1].tY = ((packet[indexOffset + 41] & 0xF0) >> 4 | packet[indexOffset + 42] << 4);
 
-			jc->touch_state.t0X = (packet[indexOffset+36] | (packet[indexOffset+37] & 0x0F) << 8) / 1920.0f;
-			jc->touch_state.t0Y = ((packet[indexOffset+37] & 0xF0) >> 4 | packet[indexOffset+38] << 4) / 943.0f;
-			jc->touch_state.t1X = (packet[indexOffset+40] | (packet[indexOffset+41] & 0x0F) << 8) / 1920.0f;
-			jc->touch_state.t1Y = ((packet[indexOffset+41] & 0xF0) >> 4 | packet[indexOffset+42] << 4) / 943.0f;
+			printf("DS4 touch: %d, %d, %d, %d, %.4f, %.4f, %.4f, %.4f\n",
+				current[0].tId, current[1].tId, current[0].tDown, current[1].tDown,
+				current[0].tX, current[0].tY, current[1].tX, current[1].tY);
 
-			//printf("DS4 touch: %d, %d, %d, %d, %.4f, %.4f, %.4f, %.4f\n",
-			//	jc->touch_state.t0Id, jc->touch_state.t1Id, jc->touch_state.t0Down, jc->touch_state.t1Down,
-			//	jc->touch_state.t0X, jc->touch_state.t0Y, jc->touch_state.t1X, jc->touch_state.t1Y);
+			// Do I need to check for matching IDs here?
+			// DS4 consistently sends the same touch ID in the same array position until released.
+
+			jc->touch_point[0].posX = current[0].tDown ? current[0].tX / 1920.0f : -1.f; // Absolute position in percentage
+			jc->touch_point[0].posY = current[0].tDown ? current[0].tY / 943.0f : -1.f;
+			jc->touch_point[0].movX = jc->prev_touch_state[0].tDown ? current[0].tX - jc->prev_touch_state[0].tX : 0.f; // Relative movement in unit
+			jc->touch_point[0].movY = jc->prev_touch_state[0].tDown ? current[0].tY - jc->prev_touch_state[0].tY : 0.f;
+
+			jc->touch_point[1].posX = current[1].tDown ? current[1].tX / 1920.0f : -1.f;
+			jc->touch_point[1].posY = current[1].tDown ? current[1].tY / 943.0f : -1.f;
+			jc->touch_point[1].movX = jc->prev_touch_state[1].tDown ? current[1].tX - jc->prev_touch_state[1].tX : 0.f;
+			jc->touch_point[1].movY = jc->prev_touch_state[1].tDown ? current[1].tY - jc->prev_touch_state[1].tY : 0.f;
+
+			jc->prev_touch_state = current;  // Keep for differences next callback
 
 			// DS4 dpad is a hat...  0x08 is released, 0=N, 1=NE, 2=E, 3=SE, 4=S, 5=SW, 6=W, 7=NW
 			// http://eleccelerator.com/wiki/index.php?title=DualShock_4
@@ -180,22 +194,36 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
         //printf("%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%d\n",
         //	jc->gyro.yaw, jc->gyro.pitch, jc->gyro.roll, jc->accel.x, jc->accel.y, jc->accel.z, universal_counter++);
 
-        // Touchpad:
-        jc->last_touch_state = jc->touch_state;
+		// Touchpad:
+		std::array<TOUCH_STATE, 2> current;
+		current[0].tDown = (packet[indexOffset + 35] & 0x80) == 0;
+		current[0].tId = (int)(packet[indexOffset + 35] & 0x7F);
+		current[0].tX = (packet[indexOffset + 36] | (packet[indexOffset + 37] & 0x0F) << 8);
+		current[0].tY = ((packet[indexOffset + 37] & 0xF0) >> 4 | packet[indexOffset + 38] << 4);
 
-        jc->touch_state.t0Id = (int) (packet[indexOffset + 32] & 0x7F);
-        jc->touch_state.t1Id = (int) (packet[indexOffset + 36] & 0x7F);
-        jc->touch_state.t0Down = (packet[indexOffset + 32] & 0x80) == 0;
-        jc->touch_state.t1Down = (packet[indexOffset + 36] & 0x80) == 0;
+		current[1].tDown = (packet[indexOffset + 39] & 0x80) == 0;
+		current[1].tId = (int)(packet[indexOffset + 39] & 0x7F);
+		current[1].tX = (packet[indexOffset + 40] | (packet[indexOffset + 41] & 0x0F) << 8);
+		current[1].tY = ((packet[indexOffset + 41] & 0xF0) >> 4 | packet[indexOffset + 42] << 4);
 
-        jc->touch_state.t0X = (packet[indexOffset + 33] | (packet[indexOffset + 34] & 0x0F) << 8) / 1920.0f;
-        jc->touch_state.t0Y = ((packet[indexOffset + 34] & 0xF0) >> 4 | packet[indexOffset + 35] << 4) / 943.0f;
-        jc->touch_state.t1X = (packet[indexOffset + 37] | (packet[indexOffset + 38] & 0x0F) << 8) / 1920.0f;
-        jc->touch_state.t1Y = ((packet[indexOffset + 38] & 0xF0) >> 4 | packet[indexOffset + 39] << 4) / 943.0f;
+		printf("DS touch: %d, %d, %d, %d, %.4f, %.4f, %.4f, %.4f\n",
+			current[0].tId, current[1].tId, current[0].tDown, current[1].tDown,
+			current[0].tX, current[0].tY, current[1].tX, current[1].tY);
 
-        //printf("DS touch: %d, %d, %d, %d, %.4f, %.4f, %.4f, %.4f\n",
-        //	jc->touch_state.t0Id, jc->touch_state.t1Id, jc->touch_state.t0Down, jc->touch_state.t1Down,
-        //	jc->touch_state.t0X, jc->touch_state.t0Y, jc->touch_state.t1X, jc->touch_state.t1Y);
+		// Do I need to check for matching IDs here?
+		// DS consistently sends the same touch ID in the same array position until released.
+
+		jc->touch_point[0].posX = current[0].tDown ? current[0].tX / 1920.0f : -1.f; // Absolute position in percentage
+		jc->touch_point[0].posY = current[0].tDown ? current[0].tY / 943.0f : -1.f;
+		jc->touch_point[0].movX = jc->prev_touch_state[0].tDown ? current[0].tX - jc->prev_touch_state[0].tX : 0.f; // Relative movement in unit
+		jc->touch_point[0].movY = jc->prev_touch_state[0].tDown ? current[0].tY - jc->prev_touch_state[0].tY : 0.f;
+
+		jc->touch_point[1].posX = current[1].tDown ? current[1].tX / 1920.0f : -1.f;
+		jc->touch_point[1].posY = current[1].tDown ? current[1].tY / 943.0f : -1.f;
+		jc->touch_point[1].movX = jc->prev_touch_state[1].tDown ? current[1].tX - jc->prev_touch_state[1].tX : 0.f;
+		jc->touch_point[1].movY = jc->prev_touch_state[1].tDown ? current[1].tY - jc->prev_touch_state[1].tY : 0.f;
+
+		jc->prev_touch_state = current;  // Keep for differences next callback
 
         // DS dpad is a hat...  0x08 is released, 0=N, 1=NE, 2=E, 3=SE, 4=S, 5=SW, 6=W, 7=NW
         // http://eleccelerator.com/wiki/index.php?title=DualShock_4

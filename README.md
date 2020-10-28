@@ -57,6 +57,10 @@ The latest version of JoyShockLibrary can always be found [here](https://github.
 * **float accelX, accelY, accelZ** - local acceleration after accounting for and removing the effect of gravity.
 * **float gravX, gravY, gravZ** - local gravity direction.
 
+**struct TOUCH_POINT** - The TOUCH_POINT reports a single touch event on the device touch sensitive sensor, such as the DS4 touchpad.
+* **float posX, posY** - The absolute position of the touch point as a percentage.
+* **short movX, movY** - Relative movement, or difference of raw positions with the previous report.
+
 ### Functions
 
 All these functions *should* be thread-safe, and none of them should cause any harm if given the wrong handle. If they do, please report this to me as an isuse.
@@ -73,7 +77,7 @@ All these functions *should* be thread-safe, and none of them should cause any h
 
 **MOTION\_STATE JslGetMotionState(int deviceId)** - Get the latest motion state for the controller with the given id.
 
-**TOUCH\_STATE JslGetTouchState(int deviceId)** - Get the latest touchpad state for the controller with the given id. Only DualShock 4s support this.
+**TOUCH\_POINT JslGetTouchPoint(int deviceId, int touchIndex)** - Get the latest report for touch point of given index for the controller with the given id. Only DualShock 4s support this.
 
 **int JslGetButtons(int deviceId)** - Get the latest button state for the controller with the given id. If you want more than just the buttons, it's more efficient to use JslGetSimpleState.
 
@@ -84,12 +88,6 @@ All these functions *should* be thread-safe, and none of them should cause any h
 **float JslGetGyroX/JslGetGyroY/JslGetGyroZ(int deviceId)** - Get the latest angular velocity for a given gyroscope axis. If you want more than just a single gyroscope axis velocity, it's more efficient to use JslGetIMUState.
 
 **float JslGetAccelX/JslGetAccelY/JslGetAccelZ(int deviceId)** - Get the latest acceleration for a given axis. If you want more than just a accelerometer axis, it's more efficient to use JslGetIMUState.
-
-**int JslGetTouchId(int deviceId, bool secondTouch=false)** - Get the last touch's id, which is a value in range of 0-127 that automaticaly increments whenever a new touch appears, for the controller with the given id. Only DualShock 4s support this. If you want more than just a touch's id, it's more efficient to use JslGetTouchState.
-
-**bool JslGetTouchDown(int deviceId, bool secondTouch=false)** - Get the latest state of the touch being present on a touchpad for the controller with the given id. Only DualShock 4s support this. If you want more than just a presence of touch, it's more efficient to use JslGetTouchState.
-
-**float JslGetTouchX/JslGetTouchY(int deviceId, bool secondTouch=false)** - Get the latest touch state for the controller with the given id. Only DualShock 4s support this. If you want more than just a single touch axis, it's more efficient to use JslGetTouchState.
 
 **float JslGetStickStep(int deviceId)** - Different devices use different size data types and different ranges on those data types when reporting stick axes. For some calculations, it may be important to know the limits of the current device and work around them in different ways. This gives the smallest step size between two values for the given device's analog sticks.
 
@@ -111,7 +109,7 @@ All these functions *should* be thread-safe, and none of them should cause any h
 
 **void JslSetCallback(void(\*callback)(int, JOY\_SHOCK\_STATE, JOY\_SHOCK\_STATE, IMU\_STATE, IMU\_STATE, float))** - Set a callback function by which JoyShockLibrary can report the current state for each device. This callback will be given the *deviceId* for the reporting device, its current button + trigger + stick state, its previous button + trigger + stick state, its current accelerometer + gyro state, its previous accelerometer + gyro state, and the amount of time since the last report for this device (in seconds).
 
-**void JslSetTouchCallback(void(\*callback)(int, TOUCH\_STATE, TOUCH\_STATE, float))** - Set a callback function by which JoyShockLibrary can report the current touchpad state for each device. Only DualShock 4s will use this. This callback will be given the *deviceId* for the reporting device, its current and previous touchpad states, and the amount of time since the last report for this device (in seconds).
+**void JslSetTouchCallback(void(\*callback)(int, TOUCH\_POINT, TOUCH\_POINT, float))** - Set a callback function by which JoyShockLibrary can report the current touchpad state for each device. Only DualShock 4s will use this. This callback will be given the *deviceId* for the reporting device, its two touch points, and the amount of time since the last report for this device (in seconds).
 
 **int JslGetControllerType(int deviceId)** - What type of controller is this device?
   1. Left Joy-Con

@@ -15,7 +15,7 @@
 
 std::shared_timed_mutex _callbackLock;
 void(*_pollCallback)(int, JOY_SHOCK_STATE, JOY_SHOCK_STATE, IMU_STATE, IMU_STATE, float) = nullptr;
-void(*_pollTouchCallback)(int, TOUCH_STATE, TOUCH_STATE, float) = nullptr;
+void(*_pollTouchCallback)(int, TOUCH_POINT, TOUCH_POINT, float) = nullptr;
 std::unordered_map<int, JoyShock*> _joyshocks;
 // https://stackoverflow.com/questions/41206861/atomic-increment-and-return-counter
 static std::atomic<int> _joyshockHandleCounter;
@@ -140,7 +140,7 @@ void pollIndividualLoop(JoyShock *jc) {
 					}
 					// touchpad will have its own callback so that it doesn't change the existing api
 					if (jc->controller_type != ControllerType::n_switch && _pollTouchCallback != nullptr) {
-						_pollTouchCallback(jc->intHandle, jc->touch_state, jc->last_touch_state, jc->delta_time);
+						_pollTouchCallback(jc->intHandle, jc->touch_point[0], jc->touch_point[1], jc->delta_time);
 					}
 					_callbackLock.unlock_shared();
 				}
@@ -441,11 +441,11 @@ MOTION_STATE JslGetMotionState(int deviceId)
 	}
 	return {};
 }
-TOUCH_STATE JslGetTouchState(int deviceId)
+TOUCH_POINT JslGetTouchPoint(int deviceId, int touchIndex)
 {
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
-	if (jc != nullptr) {
-		return jc->touch_state;
+	if (jc != nullptr && touchIndex < jc->touch_point.size()) {
+		return jc->touch_point[touchIndex];
 	}
 	return {};
 }
@@ -563,61 +563,6 @@ float JslGetAccelZ(int deviceId)
 	return 0.0f;
 }
 
-// get touchpad
-int JslGetTouchId(int deviceId, bool secondTouch)
-{
-	JoyShock* jc = GetJoyShockFromHandle(deviceId);
-	if (jc != nullptr) {
-		if (!secondTouch) {
-			return jc->touch_state.t0Id;
-		}
-		else {
-			return jc->touch_state.t1Id;
-		}
-	}
-	return false;
-}
-bool JslGetTouchDown(int deviceId, bool secondTouch)
-{
-	JoyShock* jc = GetJoyShockFromHandle(deviceId);
-	if (jc != nullptr) {
-		if (!secondTouch) {
-			return jc->touch_state.t0Down;
-		}
-		else {
-			return jc->touch_state.t1Down;
-		}
-	}
-	return false;
-}
-
-float JslGetTouchX(int deviceId, bool secondTouch)
-{
-	JoyShock* jc = GetJoyShockFromHandle(deviceId);
-	if (jc != nullptr) {
-		if (!secondTouch) {
-			return jc->touch_state.t0X;
-		}
-		else {
-			return jc->touch_state.t1X;
-		}
-	}
-	return 0.0f;
-}
-float JslGetTouchY(int deviceId, bool secondTouch)
-{
-	JoyShock* jc = GetJoyShockFromHandle(deviceId);
-	if (jc != nullptr) {
-		if (!secondTouch) {
-			return jc->touch_state.t0Y;
-		}
-		else {
-			return jc->touch_state.t1Y;
-		}
-	}
-	return 0.0f;
-}
-
 // analog parameters have different resolutions depending on device
 float JslGetStickStep(int deviceId)
 {
@@ -703,7 +648,7 @@ void JslSetCallback(void(*callback)(int, JOY_SHOCK_STATE, JOY_SHOCK_STATE, IMU_S
 }
 
 // this function will get called for each input event, even if touch data didn't update
-void JslSetTouchCallback(void(*callback)(int, TOUCH_STATE, TOUCH_STATE, float)) {
+void JslSetTouchCallback(void(*callback)(int, TOUCH_POINT, TOUCH_POINT, float)) {
 	_callbackLock.lock();
 	_pollTouchCallback = callback;
 	_callbackLock.unlock();
