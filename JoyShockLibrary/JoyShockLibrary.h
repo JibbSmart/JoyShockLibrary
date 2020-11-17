@@ -11,6 +11,7 @@
 #define JS_TYPE_JOYCON_RIGHT 2
 #define JS_TYPE_PRO_CONTROLLER 3
 #define JS_TYPE_DS4 4
+#define JS_TYPE_DS 5
 
 #define JS_SPLIT_TYPE_LEFT 1
 #define JS_SPLIT_TYPE_RIGHT 2

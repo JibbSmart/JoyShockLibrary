@@ -14,6 +14,12 @@
 #define _wcsdup wcsdup
 #endif
 
+enum ControllerType { n_switch, s_ds4, s_ds };
+
+// PS5 stuff
+#define DS_VENDOR 0x054C
+#define DS_USB 0x0CE6
+
 // PS4 stuff
 // http://www.psdevwiki.com/ps4/DS4-USB
 // http://www.psdevwiki.com/ps4/DS4-BT
@@ -100,8 +106,8 @@ public:
 	bool has_user_cal_stick_r = false;
 	bool has_user_cal_sensor = false;
 
-	bool is_ds4 = false;
-	bool is_usb = false; // it's ds4_bt because joycons aren't using that distinction (yet?)
+	ControllerType controller_type = ControllerType::n_switch;
+	bool is_usb = false;
 
 	unsigned char small_rumble = 0;
 	unsigned char big_rumble = 0;
@@ -310,8 +316,15 @@ public:
 			dev->product_id == DS4_USB_V2) {
 			this->name = std::string("DualShock 4");
 			this->left_right = 3; // left and right?
-			this->is_ds4 = true;
+			this->controller_type = ControllerType::s_ds4;
 			this->is_usb = (dev->product_id != DS4_BT);
+		}
+
+		if (dev->product_id == DS_USB) {
+			this->name = std::string("DualSense");
+			this->left_right = 3; // left and right?
+			this->controller_type = ControllerType::s_ds;
+			this->is_usb = true; // for now, only usb
 		}
 
 		this->serial = _wcsdup(dev->serial_number);
@@ -320,7 +333,7 @@ public:
 		//printf("Found device %c: %ls %s\n", L_OR_R(this->left_right), this->serial, dev->path);
 		this->handle = hid_open_path(dev->path);
 
-		if (this->is_ds4) {
+		if (this->controller_type == ControllerType::s_ds4) {
 			unsigned char buf[64];
 			memset(buf, 0, 64);
 
@@ -349,7 +362,7 @@ public:
 	}
 
 	int get_gyro_average_window_total_samples_for_device() {
-		if (this->is_ds4) {
+		if (this->controller_type == ControllerType::s_ds4) {
 			// 250 samples per second
 			return 250 * this->gyro_average_window_seconds;
 		}
@@ -728,7 +741,7 @@ public:
 
 		// Enable IMU data
 		printf("Enabling IMU data...\n");
-		if (is_ds4)
+		if (controller_type == ControllerType::s_ds4)
 		{
 			if (is_usb)
 			{
@@ -1013,6 +1026,37 @@ public:
 		//sensor_cal[1][2] = 0;
 
 		enable_gyro_ds4_bt(buf, 78);
+	}
+
+	// placeholder to get things working quickly. overdue for a refactor
+	void init_ds_usb() {
+		// initialise stuff
+		memset(factory_stick_cal, 0, 0x12);
+		memset(device_colours, 0, 0xC);
+		memset(user_stick_cal, 0, 0x16);
+		memset(sensor_model, 0, 0x6);
+		memset(stick_model, 0, 0x12);
+		memset(factory_sensor_cal, 0, 0x18);
+		memset(user_sensor_cal, 0, 0x1A);
+		memset(factory_sensor_cal_calm, 0, 0xC);
+		memset(user_sensor_cal_calm, 0, 0xC);
+		memset(sensor_cal, 0, sizeof(sensor_cal));
+		memset(stick_cal_x_l, 0, sizeof(stick_cal_x_l));
+		memset(stick_cal_y_l, 0, sizeof(stick_cal_y_l));
+		memset(stick_cal_x_r, 0, sizeof(stick_cal_x_r));
+		memset(stick_cal_y_r, 0, sizeof(stick_cal_y_r));
+		stick_cal_x_l[0] =
+			stick_cal_y_l[0] =
+			stick_cal_x_r[0] =
+			stick_cal_y_r[0] = 0;
+		stick_cal_x_l[1] =
+			stick_cal_y_l[1] =
+			stick_cal_x_r[1] =
+			stick_cal_y_r[1] = 127;
+		stick_cal_x_l[2] =
+			stick_cal_y_l[2] =
+			stick_cal_x_r[2] =
+			stick_cal_y_r[2] = 255;
 	}
 
 	// this is mostly copied from init_usb() below, but modified to speak DS4

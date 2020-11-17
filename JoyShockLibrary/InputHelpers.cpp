@@ -21,7 +21,7 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 	jc->delta_time = (float)(std::chrono::duration_cast<std::chrono::microseconds>(time_now - jc->last_polled).count() / 1000000.0);
 	jc->last_polled = time_now;
 	// ds4
-	if (jc->is_ds4) {
+	if (jc->controller_type == ControllerType::s_ds4) {
 		int indexOffset = 0;
 		bool isValid = true;
 		if (!jc->is_usb) {
@@ -137,6 +137,13 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 				//	jc->simple_state.buttons, (jc->simple_state.stickLX + 1), (jc->simple_state.stickLY + 1), (jc->simple_state.stickRX + 1), (jc->simple_state.stickRY + 1), jc->imu_state.gyroX, jc->imu_state.gyroY, jc->imu_state.gyroZ);
 
 
+		return true;
+	}
+
+	if (jc->controller_type == ControllerType::s_ds) {
+		printf("%d: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
+			packet[0], packet[1], packet[2], packet[3], packet[4], packet[5], packet[6], packet[7], packet[8], packet[9],
+			packet[10], packet[11], packet[12], packet[13], packet[14], packet[15], packet[16], packet[17], packet[18], packet[19], packet[20]);
 		return true;
 	}
 

@@ -45,7 +45,19 @@ void pollIndividualLoop(JoyShock *jc) {
 	int numTimeOuts = 0;
 	int numNoIMU = 0;
 	bool hasIMU = false;
-	int noIMULimit = jc->is_ds4 ? 250 : 67;
+	int noIMULimit;
+	switch (jc->controller_type)
+	{
+	case ControllerType::s_ds4:
+		noIMULimit = 250;
+		break;
+	case ControllerType::s_ds:
+		noIMULimit = 250;
+		break;
+	case ControllerType::n_switch:
+	default:
+		noIMULimit = 67;
+	}
 	float wakeupTimer = 0.0f;
 
 	while (!jc->cancel_thread) {
@@ -67,7 +79,7 @@ void pollIndividualLoop(JoyShock *jc) {
 			else
 			{
 				// try wake up the controller with the appropriate message
-				if (jc->is_ds4)
+				if (jc->controller_type != ControllerType::n_switch)
 				{
 					// TODO
 				}
@@ -127,7 +139,8 @@ void pollIndividualLoop(JoyShock *jc) {
 						_pollCallback(jc->intHandle, jc->simple_state, jc->last_simple_state, jc->imu_state, jc->last_imu_state, jc->delta_time);
 					}
 					// touchpad will have its own callback so that it doesn't change the existing api
-					if (jc->is_ds4 && _pollTouchCallback != nullptr) {
+					// todo: s_ds (DualSense) should be able to do this, too
+					if (jc->controller_type == ControllerType::s_ds4 && _pollTouchCallback != nullptr) {
 						_pollTouchCallback(jc->intHandle, jc->touch_state, jc->last_touch_state, jc->delta_time);
 					}
 					_callbackLock.unlock_shared();
@@ -149,7 +162,7 @@ void pollIndividualLoop(JoyShock *jc) {
 				}
 				
 				// dualshock 4 bluetooth might need waking up
-				if (jc->is_ds4 && !jc->is_usb)
+				if (jc->controller_type == ControllerType::s_ds4 && !jc->is_usb)
 				{
 					wakeupTimer += jc->delta_time;
 					if (wakeupTimer > 30.0f)
@@ -166,7 +179,7 @@ void pollIndividualLoop(JoyShock *jc) {
 int JslConnectDevices()
 {
 	// for writing to console:
-	//freopen("CONOUT$", "w", stdout);
+	freopen("CONOUT$", "w", stdout);
 	if (_joyshocks.size() > 0) {
 		// already connected? clean up old stuff!
 		JslDisconnectAndDisposeAll();
@@ -238,17 +251,38 @@ int JslConnectDevices()
 	}
 	hid_free_enumeration(devs);
 
+	// find dualsenses
+	devs = hid_enumerate(DS_VENDOR, 0x0);
+	cur_dev = devs;
+	while (cur_dev) {
+		// do we need to confirm vendor id if this is what we asked for?
+		if (cur_dev->vendor_id == DS_VENDOR) {
+			// usb or bluetooth ds4:
+			printf("DS\n");
+			if (cur_dev->product_id == DS_USB) {
+				JoyShock* jc = new JoyShock(cur_dev, GetUniqueHandle());
+				_joyshocks.emplace(jc->intHandle, jc);
+			}
+		}
+
+		cur_dev = cur_dev->next;
+	}
+	hid_free_enumeration(devs);
+
 	// init joyshocks:
 	for (std::pair<int, JoyShock*> pair : _joyshocks)
 	{
 		JoyShock* jc = pair.second;
-		if (jc->is_ds4) {
+		if (jc->controller_type == ControllerType::s_ds4) {
 			if (!jc->is_usb) {
 				jc->init_ds4_bt();
 			}
 			else {
 				jc->init_ds4_usb();
 			}
+		} // dualsense
+		else if (jc->controller_type == ControllerType::s_ds)
+		{
 		} // charging grip
 		else if (jc->is_usb) {
 			//printf("USB\n");
@@ -273,7 +307,7 @@ int JslConnectDevices()
 	for (std::pair<int, JoyShock*> pair : _joyshocks)
 	{
 		JoyShock *jc = pair.second;
-		if (jc->is_ds4) {
+		if (jc->controller_type != ControllerType::n_switch) {
 			// don't do joycon LED stuff with DS4
 			continue;
 		}
@@ -321,13 +355,16 @@ void JslDisconnectAndDisposeAll()
 		// threads for polling
 		jc->cancel_thread = true;
 		jc->thread->join();
-		if (jc->is_ds4) {
+		if (jc->controller_type == ControllerType::s_ds4) {
 			if (jc->is_usb) {
 				jc->deinit_ds4_usb();
 			}
 			else {
 				jc->deinit_ds4_bt();
 			}
+		}
+		else if (jc->controller_type == ControllerType::s_ds) {
+
 		} // TODO: Charging grip? bluetooth?
 		else if (jc->is_usb) {
 			jc->deinit_usb();
@@ -570,7 +607,7 @@ float JslGetStickStep(int deviceId)
 {
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
-		if (jc->is_ds4) {
+		if (jc->controller_type != ControllerType::n_switch) {
 			return 1.0 / 128.0;
 		}
 		else {
@@ -589,7 +626,7 @@ float JslGetTriggerStep(int deviceId)
 {
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
-		return jc->is_ds4 ? 1 / 256.0 : 1.0;
+		return jc->controller_type != ControllerType::n_switch ? 1 / 256.0 : 1.0;
 	}
 	return 1.0f;
 }
@@ -597,7 +634,7 @@ float JslGetPollRate(int deviceId)
 {
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
-		return jc->is_ds4 ? 250.0 : 66.6667;
+		return jc->controller_type != ControllerType::n_switch ? 250.0 : 66.6667;
 	}
 	return 0.0f;
 }
@@ -661,12 +698,14 @@ int JslGetControllerType(int deviceId)
 {
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
-		if (jc->is_ds4)
+		switch (jc->controller_type)
 		{
+		case ControllerType::s_ds4:
 			return JS_TYPE_DS4;
-		}
-		else
-		{
+		case ControllerType::s_ds:
+			return JS_TYPE_DS;
+		default:
+		case ControllerType::n_switch:
 			return jc->left_right;
 		}
 	}
@@ -695,7 +734,7 @@ int JslGetControllerColour(int deviceId)
 void JslSetLightColour(int deviceId, int colour)
 {
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
-	if (jc != nullptr && jc->is_ds4) {
+	if (jc != nullptr && jc->controller_type == ControllerType::s_ds4) {
 		jc->led_r = (colour >> 16) & 0xff;
 		jc->led_g = (colour >> 8) & 0xff;
 		jc->led_b = colour & 0xff;
@@ -711,7 +750,7 @@ void JslSetLightColour(int deviceId, int colour)
 void JslSetRumble(int deviceId, int smallRumble, int bigRumble)
 {
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
-	if (jc != nullptr && jc->is_ds4) {
+	if (jc != nullptr && jc->controller_type == ControllerType::s_ds4) {
 		jc->small_rumble = smallRumble;
 		jc->big_rumble = bigRumble;
 		jc->set_ds4_rumble_light(
@@ -726,7 +765,7 @@ void JslSetRumble(int deviceId, int smallRumble, int bigRumble)
 void JslSetPlayerNumber(int deviceId, int number)
 {
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
-	if (jc != nullptr && !jc->is_ds4) {
+	if (jc != nullptr && jc->controller_type == ControllerType::n_switch) {
 		jc->player_number = number;
 		unsigned char buf[64];
 		memset(buf, 0x00, 0x40);
