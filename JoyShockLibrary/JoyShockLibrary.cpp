@@ -139,8 +139,7 @@ void pollIndividualLoop(JoyShock *jc) {
 						_pollCallback(jc->intHandle, jc->simple_state, jc->last_simple_state, jc->imu_state, jc->last_imu_state, jc->delta_time);
 					}
 					// touchpad will have its own callback so that it doesn't change the existing api
-					// todo: s_ds (DualSense) should be able to do this, too
-					if (jc->controller_type == ControllerType::s_ds4 && _pollTouchCallback != nullptr) {
+					if (jc->controller_type != ControllerType::n_switch && _pollTouchCallback != nullptr) {
 						_pollTouchCallback(jc->intHandle, jc->touch_state, jc->last_touch_state, jc->delta_time);
 					}
 					_callbackLock.unlock_shared();
@@ -179,7 +178,7 @@ void pollIndividualLoop(JoyShock *jc) {
 int JslConnectDevices()
 {
 	// for writing to console:
-	freopen("CONOUT$", "w", stdout);
+	//freopen("CONOUT$", "w", stdout);
 	if (_joyshocks.size() > 0) {
 		// already connected? clean up old stuff!
 		JslDisconnectAndDisposeAll();
