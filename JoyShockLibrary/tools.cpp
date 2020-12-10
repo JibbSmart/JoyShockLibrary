@@ -1,26 +1,10 @@
 #pragma once
 
-#include <chrono>
-#include <thread>
-#include <map>
+#include "tools.h"
 #include <string>
 #include <iostream>
-#include <fstream>
-#include <sstream>
-#include <cstring>
 
 //#include <curl/curl.h>
-
-#pragma warning(disable: 4996)
-
-typedef uint8_t u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef uint64_t u64;
-typedef int8_t s8;
-typedef int16_t s16;
-typedef int32_t s32;
-typedef int64_t s64;
 
 int16_t unsignedToSigned16(uint16_t n) {
 	uint16_t A = n;

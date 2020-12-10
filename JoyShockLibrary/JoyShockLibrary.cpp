@@ -1,3 +1,4 @@
+#pragma once
 // JoyShockLibrary.cpp : Defines the exported functions for the DLL application.
 //
 
@@ -9,9 +10,9 @@
 #include <shared_mutex>
 #include <unordered_map>
 #include <atomic>
-#include "SensorFusion.cpp"
-#include "JoyShock.cpp"
-#include "InputHelpers.cpp"
+#include "SensorFusion.h"
+#include "JoyShock.h"
+#include "InputHelpers.h"
 
 std::shared_timed_mutex _callbackLock;
 void(*_pollCallback)(int, JOY_SHOCK_STATE, JOY_SHOCK_STATE, IMU_STATE, IMU_STATE, float) = nullptr;
