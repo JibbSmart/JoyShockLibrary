@@ -30,6 +30,9 @@ enum ControllerType { n_switch, s_ds4, s_ds };
 #define DS4_USB_V2 0x09CC
 #define DS4_USB_DONGLE 0x0BA0
 #define DS4_BT 0x081F
+// DS4 compatible controllers
+#define BROOK_DS4_VENDOR 0x0C12
+#define BROOK_DS4_USB 0x0E20
 
 // Joycon and Pro conroller stuff is mostly from
 // https://github.com/mfosse/JoyCon-Driver
@@ -318,6 +321,13 @@ public:
 			this->left_right = 3; // left and right?
 			this->controller_type = ControllerType::s_ds4;
 			this->is_usb = (dev->product_id != DS4_BT);
+		}
+		
+		if (dev->product_id == BROOK_DS4_USB) {
+			this->name = std::string("DualShock 4");
+			this->left_right = 3; // left and right?
+			this->controller_type = ControllerType::s_ds4;
+			this->is_usb = true; // this controller is wired
 		}
 
 		if (dev->product_id == DS_USB) {
