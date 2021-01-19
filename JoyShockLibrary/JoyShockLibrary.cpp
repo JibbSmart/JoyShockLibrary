@@ -354,6 +354,7 @@ void JslDisconnectAndDisposeAll()
 		// threads for polling
 		jc->cancel_thread = true;
 		jc->thread->join();
+		delete jc->thread;
 		if (jc->controller_type == ControllerType::s_ds4) {
 			if (jc->is_usb) {
 				jc->deinit_ds4_usb();
