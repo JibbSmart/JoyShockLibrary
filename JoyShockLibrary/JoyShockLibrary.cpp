@@ -249,6 +249,21 @@ int JslConnectDevices()
 		cur_dev = cur_dev->next;
 	}
 	hid_free_enumeration(devs);
+	
+	// find Brook controllers (DS4 compatible)
+	devs = hid_enumerate(BROOK_DS4_VENDOR, 0x0);
+	cur_dev = devs;
+	while (cur_dev) {
+		// brook usb ds4:
+		printf("Brook DS4\n");
+		if (cur_dev->product_id == BROOK_DS4_USB) {
+			JoyShock* jc = new JoyShock(cur_dev, GetUniqueHandle());
+			_joyshocks.emplace(jc->intHandle, jc);
+		}
+
+		cur_dev = cur_dev->next;
+	}
+	hid_free_enumeration(devs);
 
 	// find dualsenses
 	devs = hid_enumerate(DS_VENDOR, 0x0);
