@@ -129,7 +129,13 @@ All these functions *should* be thread-safe, and none of them should cause any h
 
 **void JslSetLightColour(int deviceId, int colour)** - Set the light colour on the given controller. Only DualShock 4 and the DualSense support this. Players will often prefer to be able to disable the light, so make sure to give them that option, but when setting players up in a local multiplayer game, setting the light colour is a useful way to uniquely identify different controllers.
 
-**void JslSetPlayerNumber(int deviceId, int number)** - Set the lights that indicate player number. This only works on Nintendo devices and the DualSense.
+**void JslSetPlayerNumber(int deviceId, int number)** - Set the lights that indicate player number. This only works on Nintendo devices and the DualSense. NOTE: The DualSense sets each LED through a bitmask. Use the ```DS5_PLAYER_#``` definitions in the header file to get PS5-style lightbar formats.
+
+Player 1: ```--x--```
+Player 2: ```-x-x-```
+Player 3: ```x-x-x```
+Player 4: ```xx-xx```
+Player 5: ```xxxxx```
 
 **void JslSetRumble(int deviceId, int smallRumble, int bigRumble)** - DualShock 4s have two types of rumble, and they can be set at the same time with different intensities. These can be set from 0 to 255. Nintendo devices support rumble as well, but totally differently. They call it "HD rumble", and it's a great feature, but JoyShockLibrary doesn't yet support it.
 
