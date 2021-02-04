@@ -40,8 +40,8 @@ The latest version of JoyShockLibrary can always be found [here](https://github.
   * ```0x04000``` - the West face-button: ```Y``` on Nintendo devices, ```□``` on DS4
   * ```0x08000``` - the North face-button: ```X``` on Nintendo devices, ```△``` on DS4
   * ```0x10000``` - ```Home``` on Nintendo devices, ```PS``` on DS4
-  * ```0x20000``` - ```Capture``` on Nintendo devices, ```touchpad click``` on DS4
-  * ```0x40000``` - ```SL``` on Nintendo JoyCons
+  * ```0x20000``` - ```Capture``` on Nintendo devices, ```touchpad click``` on DS4, ```Create``` on DS5
+  * ```0x40000``` - ```SL``` on Nintendo JoyCons, ```Mic``` on DS5
   * ```0x80000``` - ```SR``` on Nintendo JoyCons
 * **float lTrigger** - how far has the left trigger been pressed? This will be 1 or 0 on Nintendo devices, which don't have analog triggers
 * **float rTrigger** - how far has the right trigger been pressed? This will be 1 or 0 on Nintendo devices, which don't have analog triggers
@@ -118,6 +118,7 @@ All these functions *should* be thread-safe, and none of them should cause any h
   2. Right JoyCon
   3. Switch Pro Controller
   4. DualShock 4
+  5. DualSense
 
 **int JslGetControllerSplitType(int deviceId)** - Is this a half-controller or full? If half, what kind?
   1. Left half
@@ -126,16 +127,14 @@ All these functions *should* be thread-safe, and none of them should cause any h
 
 **int JslGetControllerColour(int deviceId)** - Get the colour of the controller. Only Nintendo devices support this. Others will report white.
 
-**void JslSetLightColour(int deviceId, int colour)** - Set the light colour on the given controller. Only DualShock 4s support this. Players will often prefer to be able to disable the light, so make sure to give them that option, but when setting players up in a local multiplayer game, setting the light colour is a useful way to uniquely identify different controllers.
+**void JslSetLightColour(int deviceId, int colour)** - Set the light colour on the given controller. Only DualShock 4 and the DualSense support this. Players will often prefer to be able to disable the light, so make sure to give them that option, but when setting players up in a local multiplayer game, setting the light colour is a useful way to uniquely identify different controllers.
 
-**void JslSetPlayerNumber(int deviceId, int number)** - Set the lights that indicate player number. This only works on Nintendo devices.
+**void JslSetPlayerNumber(int deviceId, int number)** - Set the lights that indicate player number. This only works on Nintendo devices and the DualSense.
 
 **void JslSetRumble(int deviceId, int smallRumble, int bigRumble)** - DualShock 4s have two types of rumble, and they can be set at the same time with different intensities. These can be set from 0 to 255. Nintendo devices support rumble as well, but totally differently. They call it "HD rumble", and it's a great feature, but JoyShockLibrary doesn't yet support it.
 
 ## Known and Perceived Issues
 ### Bluetooth connectivity
-JoyShockLibrary doesn't yet support setting rumble and light colour for the DualShock 4 via Bluetooth.
-
 JoyCons and Pro Controllers are normally only be connected by Bluetooth. Some Bluetooth adapters can't keep up with these devices, resulting in laggy input. This is especially common when more than one device is connected (such as when using a pair of JoyCons). There is nothing JoyShockMapper or JoyShockLibrary can do about this.
 
 There is experimental support for connecting supported Switch controllers by USB now. Please let me know if you have any issues (or success!) with it.
