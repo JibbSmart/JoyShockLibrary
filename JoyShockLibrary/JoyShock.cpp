@@ -309,6 +309,22 @@ public:
 				this->is_usb = false;
 			}
 		}
+		else if(this->controller_type == ControllerType::s_ds) {
+            unsigned char buf[64];
+            memset(buf, 0, 64);
+
+            // We can reuse the same command on the DS5 to enable Full Mode.
+            enable_gyro_ds4_bt(buf, 64);
+
+            hid_read_timeout(handle, buf, 64, 100);
+
+            // The DS's protocol is literally so similar to the DS4 that we can reuse the same reports to get the same results.
+            // Meet the new boss - the same as the old boss.
+            if (buf[0] == 0x31) {
+                this->is_usb = false;
+            }
+
+        }
 
 		// initialise continuous calibration windows
 		reset_continuous_calibration();
@@ -1139,6 +1155,20 @@ public:
 		//printf("Deinitialized %s\n", this->name.c_str());
 	}
 
+	void set_ds5_rumble_light(unsigned char smallRumble, unsigned char bigRumble,
+                           unsigned char colourR,
+                           unsigned char colourG,
+                           unsigned char colourB,
+                           unsigned char playerlights) {
+	    if(!is_usb) {
+	        set_ds5_rumble_light_bt(smallRumble, bigRumble, colourR, colourG, colourB, playerlights);
+	    }
+	    else {
+            set_ds5_rumble_light_usb(smallRumble, bigRumble, colourR, colourG, colourB, playerlights);
+        }
+
+	}
+
 	void set_ds4_rumble_light(unsigned char smallRumble, unsigned char bigRumble,
 		unsigned char colourR,
 		unsigned char colourG,
@@ -1243,6 +1273,150 @@ public:
 
 		hid_write(handle, &buf[1], 78);
 	}
+
+    void set_ds5_rumble_light_usb(unsigned char smallRumble, unsigned char bigRumble,
+                                 unsigned char colourR,
+                                 unsigned char colourG,
+                                 unsigned char colourB,
+                                 unsigned char playerlights) { // DS5 actually has player lights.
+        unsigned char buf[79];
+        memset(buf, 0, 79);
+
+        // https://github.com/Ryochan7/DS4Windows/blob/jay/DS4Windows/DS4Library/InputDevices/DualSenseDevice.cs
+        // DS4Windows to the rescue.
+        // Also thanks to Neilk1 for sharing his doc on the DS5 protocol.
+
+        // Header & Report Information
+        buf[0] = 0xa2; // Output report header, needs to be included in crc32
+        buf[1] = 0x02; // DualSense output report is 0x0
+        //buf[1] = 0x02; // DATA (0x02)
+
+        // Comment stolen from DS4Windows:
+        // 0x01 Set the main motors (also requires flag 0x02)
+        // 0x02 Set the main motors (also requires flag 0x01)
+        // 0x04 Set the right trigger motor
+        // 0x08 Set the left trigger motor
+        // 0x10 Enable modification of audio volume
+        // 0x20 Enable internal speaker (even while headset is connected)
+        // 0x40 Enable modification of microphone volume
+        // 0x80 Enable internal mic (even while headset is connected)
+        buf[2] = 0x03;
+
+        // Comment stolen from DS4Windows:
+        // 0x01 Toggling microphone LED, 0x02 Toggling Audio/Mic Mute
+        // 0x04 Toggling LED strips on the sides of the Touchpad, 0x08 Turn off all LED lights
+        // 0x10 Toggle player LED lights below Touchpad, 0x20 ???
+        // 0x40 Adjust overall motor/effect power, 0x80 ???
+        buf[3] = 0x54; // Toggle LED Strips, player lights, motor effect. Ignore Mic LED
+
+        // Rumble emulation bytes.
+        buf[4] = smallRumble;
+        buf[5] = bigRumble;
+
+        // 7-10 are mostly just audio settings.
+
+        // Mute Button state. 0x00 = off, 0x01 = solid, 0x02 = pulsating.
+        buf[10] = 0x00;
+
+        // Skip to about 41, since we are ignoring trigger effect data.
+        // Enable LED brightness
+        buf[40] = 0x02; // ???
+        buf[41] = 0x02;
+        buf[44] = 0x02;
+
+        // Controls the player lights, which the DS5 has.
+        // Last two bits are unused - unset them to avoid issues.
+        buf[45] = playerlights;
+        buf[45] &= ~(1 << 7);
+        buf[45] &= ~(1 << 8);
+
+        // colour
+        buf[46] = colourR;
+        buf[47] = colourG;
+        buf[48] = colourB;
+
+        // USB does not send CRC32
+
+        //uint32_t crc = crc_32(buf, 74);
+        //memcpy(&buf[74], &crc, 4);
+        //buf[75] = (crc >> 24) & 0xFF;
+        //buf[76] = (crc >> 16) & 0xFF;
+        //buf[77] = (crc >> 8) & 0xFF;
+        //buf[78] = crc & 0xFF;
+
+        hid_write(handle, buf, 74);
+    }
+
+	// Calling the Dualsense anything but the DS5 is confusing, since DS also = DualShock, and the DualSense is the PS5 Controller anyway
+    void set_ds5_rumble_light_bt(unsigned char smallRumble, unsigned char bigRumble,
+                                 unsigned char colourR,
+                                 unsigned char colourG,
+                                 unsigned char colourB,
+                                 unsigned char playerlights) { // DS5 actually has player lights.
+        unsigned char buf[79];
+        memset(buf, 0, 79);
+
+        // https://github.com/Ryochan7/DS4Windows/blob/jay/DS4Windows/DS4Library/InputDevices/DualSenseDevice.cs
+        // DS4Windows to the rescue.
+        // Also thanks to Neilk1 for sharing his doc on the DS5 protocol.
+
+        // Header & Report Information
+        buf[0] = 0xa2; // Output report header, needs to be included in crc32
+        buf[1] = 0x31; // DualSense output report is 0x31
+        buf[2] = 0x02; // DATA (0x02)
+
+        // Comment stolen from DS4Windows:
+        // 0x01 Set the main motors (also requires flag 0x02)
+        // 0x02 Set the main motors (also requires flag 0x01)
+        // 0x04 Set the right trigger motor
+        // 0x08 Set the left trigger motor
+        // 0x10 Enable modification of audio volume
+        // 0x20 Enable internal speaker (even while headset is connected)
+        // 0x40 Enable modification of microphone volume
+        // 0x80 Enable internal mic (even while headset is connected)
+        buf[3] = 0x03;
+
+        // Comment stolen from DS4Windows:
+        // 0x01 Toggling microphone LED, 0x02 Toggling Audio/Mic Mute
+        // 0x04 Toggling LED strips on the sides of the Touchpad, 0x08 Turn off all LED lights
+        // 0x10 Toggle player LED lights below Touchpad, 0x20 ???
+        // 0x40 Adjust overall motor/effect power, 0x80 ???
+        buf[4] = 0x54; // Toggle LED Strips, player lights, motor effect. Ignore Mic LED
+
+        // Rumble emulation bytes.
+        buf[5] = smallRumble;
+        buf[6] = bigRumble;
+
+        // 7-10 are mostly just audio settings.
+
+        // Mute Button state. 0x00 = off, 0x01 = solid, 0x02 = pulsating.
+        buf[11] = 0x00;
+
+        // Skip to about 41, since we are ignoring trigger effect data.
+        // Enable LED brightness
+        buf[41] = 0x02; // ???
+        buf[44] = 0x02;
+        buf[45] = 0x02;
+
+        // Last two bits are unused - unset them to avoid issues.
+        buf[46] = playerlights;
+        buf[46] &= ~(1 << 7);
+        buf[46] &= ~(1 << 8);
+
+        // colour
+        buf[47] = colourR;
+        buf[48] = colourG;
+        buf[49] = colourB;
+
+        uint32_t crc = crc_32(buf, 75);
+        memcpy(&buf[75], &crc, 4);
+        //buf[75] = (crc >> 24) & 0xFF;
+        //buf[76] = (crc >> 16) & 0xFF;
+        //buf[77] = (crc >> 8) & 0xFF;
+        //buf[78] = crc & 0xFF;
+
+        hid_write(handle, &buf[1], 78);
+    }
 
 	//// mfosse credits Hypersect (Ryan Juckett), but I've removed deadzones so the consuming application can deal with them
 	//// http://blog.hypersect.com/interpreting-analog-sticks/

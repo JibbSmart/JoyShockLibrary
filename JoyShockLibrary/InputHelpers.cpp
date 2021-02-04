@@ -141,91 +141,97 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 	}
 
 	if (jc->controller_type == ControllerType::s_ds) {
-		//printf("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
-		//	packet[0], packet[1], packet[2], packet[3], packet[4], packet[5], packet[6], packet[7], packet[8], packet[9],
-		//	packet[10], packet[11], packet[12], packet[13], packet[14], packet[15], packet[16], packet[17], packet[18], packet[19], packet[20],
-		//	packet[21], packet[22], packet[23], packet[24], packet[25], packet[26], packet[27], packet[28], packet[29], packet[30],
-		//	packet[31], packet[32], packet[33], packet[34], packet[35], packet[36], packet[37], packet[38], packet[39], packet[40],
-		//	packet[41], packet[42], packet[43], packet[44], packet[45], packet[46], packet[47], packet[48], packet[49], packet[50]);
-		int indexOffset = 1;
+        //printf("%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
+        //	packet[0], packet[1], packet[2], packet[3], packet[4], packet[5], packet[6], packet[7], packet[8], packet[9],
+        //	packet[10], packet[11], packet[12], packet[13], packet[14], packet[15], packet[16], packet[17], packet[18], packet[19], packet[20],
+        //	packet[21], packet[22], packet[23], packet[24], packet[25], packet[26], packet[27], packet[28], packet[29], packet[30],
+        //	packet[31], packet[32], packet[33], packet[34], packet[35], packet[36], packet[37], packet[38], packet[39], packet[40],
+        //	packet[41], packet[42], packet[43], packet[44], packet[45], packet[46], packet[47], packet[48], packet[49], packet[50]);
+        int indexOffset = 1;
+        if(!jc->is_usb) {
+            indexOffset = 2;
+        }
 
-		// Gyroscope:
-			// Gyroscope data is relative (degrees/s)
-		int16_t gyroSampleX = uint16_to_int16(packet[indexOffset + 15] | (packet[indexOffset + 16] << 8) & 0xFF00);
-		int16_t gyroSampleY = uint16_to_int16(packet[indexOffset + 17] | (packet[indexOffset + 18] << 8) & 0xFF00);
-		int16_t gyroSampleZ = uint16_to_int16(packet[indexOffset + 19] | (packet[indexOffset + 20] << 8) & 0xFF00);
-		int16_t accelSampleX = uint16_to_int16(packet[indexOffset + 21] | (packet[indexOffset + 22] << 8) & 0xFF00);
-		int16_t accelSampleY = uint16_to_int16(packet[indexOffset + 23] | (packet[indexOffset + 24] << 8) & 0xFF00);
-		int16_t accelSampleZ = uint16_to_int16(packet[indexOffset + 25] | (packet[indexOffset + 26] << 8) & 0xFF00);
+        // Gyroscope:
+        // Gyroscope data is relative (degrees/s)
+        int16_t gyroSampleX = uint16_to_int16(packet[indexOffset + 15] | (packet[indexOffset + 16] << 8) & 0xFF00);
+        int16_t gyroSampleY = uint16_to_int16(packet[indexOffset + 17] | (packet[indexOffset + 18] << 8) & 0xFF00);
+        int16_t gyroSampleZ = uint16_to_int16(packet[indexOffset + 19] | (packet[indexOffset + 20] << 8) & 0xFF00);
+        int16_t accelSampleX = uint16_to_int16(packet[indexOffset + 21] | (packet[indexOffset + 22] << 8) & 0xFF00);
+        int16_t accelSampleY = uint16_to_int16(packet[indexOffset + 23] | (packet[indexOffset + 24] << 8) & 0xFF00);
+        int16_t accelSampleZ = uint16_to_int16(packet[indexOffset + 25] | (packet[indexOffset + 26] << 8) & 0xFF00);
 
-		if ((gyroSampleX | gyroSampleY | gyroSampleZ | accelSampleX | accelSampleY | accelSampleZ) == 0)
-		{
-			// all zero?
-			hasIMU = false;
-		}
+        if ((gyroSampleX | gyroSampleY | gyroSampleZ | accelSampleX | accelSampleY | accelSampleZ) == 0) {
+            // all zero?
+            hasIMU = false;
+        }
 
-		// convert to real units
-		jc->imu_state.gyroX = (float)(gyroSampleX) * (2000.0 / 32767.0);
-		jc->imu_state.gyroY = (float)(gyroSampleY) * (2000.0 / 32767.0);
-		jc->imu_state.gyroZ = (float)(gyroSampleZ) * (2000.0 / 32767.0);
+        // convert to real units
+        jc->imu_state.gyroX = (float) (gyroSampleX) * (2000.0 / 32767.0);
+        jc->imu_state.gyroY = (float) (gyroSampleY) * (2000.0 / 32767.0);
+        jc->imu_state.gyroZ = (float) (gyroSampleZ) * (2000.0 / 32767.0);
 
-		jc->imu_state.accelX = (float)(accelSampleX) / 8192.0;
-		jc->imu_state.accelY = (float)(accelSampleY) / 8192.0;
-		jc->imu_state.accelZ = (float)(accelSampleZ) / 8192.0;
+        jc->imu_state.accelX = (float) (accelSampleX) / 8192.0;
+        jc->imu_state.accelY = (float) (accelSampleY) / 8192.0;
+        jc->imu_state.accelZ = (float) (accelSampleZ) / 8192.0;
 
-		//printf("DS accel: %.4f, %.4f, %.4f\n", jc->imu_state.accelX, jc->imu_state.accelY, jc->imu_state.accelZ);
+        //printf("DS accel: %.4f, %.4f, %.4f\n", jc->imu_state.accelX, jc->imu_state.accelY, jc->imu_state.accelZ);
 
-		//printf("%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%d\n",
-		//	jc->gyro.yaw, jc->gyro.pitch, jc->gyro.roll, jc->accel.x, jc->accel.y, jc->accel.z, universal_counter++);
+        //printf("%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%d\n",
+        //	jc->gyro.yaw, jc->gyro.pitch, jc->gyro.roll, jc->accel.x, jc->accel.y, jc->accel.z, universal_counter++);
 
-		// Touchpad:
-		jc->last_touch_state = jc->touch_state;
+        // Touchpad:
+        jc->last_touch_state = jc->touch_state;
 
-		jc->touch_state.t0Id = (int)(packet[indexOffset + 32] & 0x7F);
-		jc->touch_state.t1Id = (int)(packet[indexOffset + 36] & 0x7F);
-		jc->touch_state.t0Down = (packet[indexOffset + 32] & 0x80) == 0;
-		jc->touch_state.t1Down = (packet[indexOffset + 36] & 0x80) == 0;
+        jc->touch_state.t0Id = (int) (packet[indexOffset + 32] & 0x7F);
+        jc->touch_state.t1Id = (int) (packet[indexOffset + 36] & 0x7F);
+        jc->touch_state.t0Down = (packet[indexOffset + 32] & 0x80) == 0;
+        jc->touch_state.t1Down = (packet[indexOffset + 36] & 0x80) == 0;
 
-		jc->touch_state.t0X = (packet[indexOffset + 33] | (packet[indexOffset + 34] & 0x0F) << 8) / 1920.0f;
-		jc->touch_state.t0Y = ((packet[indexOffset + 34] & 0xF0) >> 4 | packet[indexOffset + 35] << 4) / 943.0f;
-		jc->touch_state.t1X = (packet[indexOffset + 37] | (packet[indexOffset + 38] & 0x0F) << 8) / 1920.0f;
-		jc->touch_state.t1Y = ((packet[indexOffset + 38] & 0xF0) >> 4 | packet[indexOffset + 39] << 4) / 943.0f;
+        jc->touch_state.t0X = (packet[indexOffset + 33] | (packet[indexOffset + 34] & 0x0F) << 8) / 1920.0f;
+        jc->touch_state.t0Y = ((packet[indexOffset + 34] & 0xF0) >> 4 | packet[indexOffset + 35] << 4) / 943.0f;
+        jc->touch_state.t1X = (packet[indexOffset + 37] | (packet[indexOffset + 38] & 0x0F) << 8) / 1920.0f;
+        jc->touch_state.t1Y = ((packet[indexOffset + 38] & 0xF0) >> 4 | packet[indexOffset + 39] << 4) / 943.0f;
 
-		//printf("DS touch: %d, %d, %d, %d, %.4f, %.4f, %.4f, %.4f\n",
-		//	jc->touch_state.t0Id, jc->touch_state.t1Id, jc->touch_state.t0Down, jc->touch_state.t1Down,
-		//	jc->touch_state.t0X, jc->touch_state.t0Y, jc->touch_state.t1X, jc->touch_state.t1Y);
+        //printf("DS touch: %d, %d, %d, %d, %.4f, %.4f, %.4f, %.4f\n",
+        //	jc->touch_state.t0Id, jc->touch_state.t1Id, jc->touch_state.t0Down, jc->touch_state.t1Down,
+        //	jc->touch_state.t0X, jc->touch_state.t0Y, jc->touch_state.t1X, jc->touch_state.t1Y);
 
-		// DS dpad is a hat...  0x08 is released, 0=N, 1=NE, 2=E, 3=SE, 4=S, 5=SW, 6=W, 7=NW
-		// http://eleccelerator.com/wiki/index.php?title=DualShock_4
-		uint8_t hat = packet[indexOffset + 7] & 0x0f;
+        // DS dpad is a hat...  0x08 is released, 0=N, 1=NE, 2=E, 3=SE, 4=S, 5=SW, 6=W, 7=NW
+        // http://eleccelerator.com/wiki/index.php?title=DualShock_4
+        uint8_t hat = packet[indexOffset + 7] & 0x0f;
 
-		if ((hat > 2) & (hat < 6)) jc->simple_state.buttons |= JSMASK_DOWN; // down = SE | S | SW
-		if ((hat == 7) | (hat < 2)) jc->simple_state.buttons |= JSMASK_UP; // up = N | NE | NW
-		if ((hat > 0) & (hat < 4)) jc->simple_state.buttons |= JSMASK_RIGHT; // right = NE | E | SE
-		if ((hat > 4) & (hat < 8)) jc->simple_state.buttons |= JSMASK_LEFT; // left = SW | W | NW
+        if ((hat > 2) & (hat < 6)) jc->simple_state.buttons |= JSMASK_DOWN; // down = SE | S | SW
+        if ((hat == 7) | (hat < 2)) jc->simple_state.buttons |= JSMASK_UP; // up = N | NE | NW
+        if ((hat > 0) & (hat < 4)) jc->simple_state.buttons |= JSMASK_RIGHT; // right = NE | E | SE
+        if ((hat > 4) & (hat < 8)) jc->simple_state.buttons |= JSMASK_LEFT; // left = SW | W | NW
 
-		jc->simple_state.buttons |= ((int)(packet[indexOffset + 7] >> 4) << JSOFFSET_W) & JSMASK_W;
-		jc->simple_state.buttons |= ((int)(packet[indexOffset + 7] >> 7) << JSOFFSET_N) & JSMASK_N;
-		jc->simple_state.buttons |= ((int)(packet[indexOffset + 7] >> 5) << JSOFFSET_S) & JSMASK_S;
-		jc->simple_state.buttons |= ((int)(packet[indexOffset + 7] >> 6) << JSOFFSET_E) & JSMASK_E;
-		jc->simple_state.buttons |= ((int)(packet[indexOffset + 8] >> 6) << JSOFFSET_LCLICK) & JSMASK_LCLICK;
-		jc->simple_state.buttons |= ((int)(packet[indexOffset + 8] >> 7) << JSOFFSET_RCLICK) & JSMASK_RCLICK;
-		jc->simple_state.buttons |= ((int)(packet[indexOffset + 8] >> 5) << JSOFFSET_OPTIONS) & JSMASK_OPTIONS;
-		jc->simple_state.buttons |= ((int)(packet[indexOffset + 8] >> 4) << JSOFFSET_SHARE) & JSMASK_SHARE;
-		jc->simple_state.buttons |= ((int)(packet[indexOffset + 8] >> 1) << JSOFFSET_R) & JSMASK_R;
-		jc->simple_state.buttons |= ((int)(packet[indexOffset + 8]) << JSOFFSET_L) & JSMASK_L;
-		jc->simple_state.buttons |= ((int)(packet[indexOffset + 9]) << JSOFFSET_PS) & JSMASK_PS;
-		jc->simple_state.buttons |= ((int)(packet[indexOffset + 9] >> 1) << JSOFFSET_TOUCHPAD_CLICK) & JSMASK_TOUCHPAD_CLICK;
-		//jc->btns.zr = (packet[indexOffset+6] >> 3) & 1;
-		//jc->btns.zl = (packet[indexOffset+6] >> 2) & 1;
-		jc->simple_state.rTrigger = packet[indexOffset + 5] / 255.0f;
-		jc->simple_state.lTrigger = packet[indexOffset + 4] / 255.0f;
+        jc->simple_state.buttons |= ((int) (packet[indexOffset + 7] >> 4) << JSOFFSET_W) & JSMASK_W;
+        jc->simple_state.buttons |= ((int) (packet[indexOffset + 7] >> 7) << JSOFFSET_N) & JSMASK_N;
+        jc->simple_state.buttons |= ((int) (packet[indexOffset + 7] >> 5) << JSOFFSET_S) & JSMASK_S;
+        jc->simple_state.buttons |= ((int) (packet[indexOffset + 7] >> 6) << JSOFFSET_E) & JSMASK_E;
+        jc->simple_state.buttons |= ((int) (packet[indexOffset + 8] >> 6) << JSOFFSET_LCLICK) & JSMASK_LCLICK;
+        jc->simple_state.buttons |= ((int) (packet[indexOffset + 8] >> 7) << JSOFFSET_RCLICK) & JSMASK_RCLICK;
+        jc->simple_state.buttons |= ((int) (packet[indexOffset + 8] >> 5) << JSOFFSET_OPTIONS) & JSMASK_OPTIONS;
+        jc->simple_state.buttons |= ((int) (packet[indexOffset + 8] >> 4) << JSOFFSET_SHARE) & JSMASK_SHARE;
+        jc->simple_state.buttons |= ((int) (packet[indexOffset + 8] >> 1) << JSOFFSET_R) & JSMASK_R;
+        jc->simple_state.buttons |= ((int) (packet[indexOffset + 8]) << JSOFFSET_L) & JSMASK_L;
+        jc->simple_state.buttons |= ((int) (packet[indexOffset + 9]) << JSOFFSET_PS) & JSMASK_PS;
+        // The DS5 has a mute button that is normally ignored on PC. We can use this.
+        jc->simple_state.buttons |= ((int) (packet[indexOffset + 9] >> 2) << JSOFFSET_MIC) & JSMASK_MIC;
+        jc->simple_state.buttons |=
+                ((int) (packet[indexOffset + 9] >> 1) << JSOFFSET_TOUCHPAD_CLICK) & JSMASK_TOUCHPAD_CLICK;
+        //jc->btns.zr = (packet[indexOffset+6] >> 3) & 1;
+        //jc->btns.zl = (packet[indexOffset+6] >> 2) & 1;
+        jc->simple_state.rTrigger = packet[indexOffset + 5] / 255.0f;
+        jc->simple_state.lTrigger = packet[indexOffset + 4] / 255.0f;
 
-		if (jc->simple_state.rTrigger > 0.0) jc->simple_state.buttons |= JSMASK_ZR;
-		if (jc->simple_state.lTrigger > 0.0) jc->simple_state.buttons |= JSMASK_ZL;
+        if (jc->simple_state.rTrigger > 0.0) jc->simple_state.buttons |= JSMASK_ZR;
+        if (jc->simple_state.lTrigger > 0.0) jc->simple_state.buttons |= JSMASK_ZL;
 
-		uint16_t stick_x = packet[indexOffset + 0];
-		uint16_t stick_y = packet[indexOffset + 1];
+            uint16_t stick_x = packet[indexOffset + 0];
+            uint16_t stick_y = packet[indexOffset + 1];
+
 		stick_y = 255 - stick_y;
 
 		uint16_t stick2_x = packet[indexOffset + 2];

@@ -745,6 +745,18 @@ void JslSetLightColour(int deviceId, int colour)
 			jc->led_g,
 			jc->led_b);
 	}
+	else if(jc != nullptr && jc->controller_type == ControllerType::s_ds) {
+        jc->led_r = (colour >> 16) & 0xff;
+        jc->led_g = (colour >> 8) & 0xff;
+        jc->led_b = colour & 0xff;
+        jc->set_ds5_rumble_light(
+                jc->small_rumble,
+                jc->big_rumble,
+                jc->led_r,
+                jc->led_g,
+                jc->led_b,
+                jc->player_number);
+	}
 }
 // set controller rumble
 void JslSetRumble(int deviceId, int smallRumble, int bigRumble)
@@ -760,6 +772,17 @@ void JslSetRumble(int deviceId, int smallRumble, int bigRumble)
 			jc->led_g,
 			jc->led_b);
 	}
+    else if (jc != nullptr && jc->controller_type == ControllerType::s_ds4) {
+        jc->small_rumble = smallRumble;
+        jc->big_rumble = bigRumble;
+        jc->set_ds5_rumble_light(
+                jc->small_rumble,
+                jc->big_rumble,
+                jc->led_r,
+                jc->led_g,
+                jc->led_b,
+                jc->player_number);
+    }
 }
 // set controller player number indicator (not all controllers have a number indicator which can be set, but that just means nothing will be done when this is called -- no harm)
 void JslSetPlayerNumber(int deviceId, int number)
@@ -771,5 +794,15 @@ void JslSetPlayerNumber(int deviceId, int number)
 		memset(buf, 0x00, 0x40);
 		buf[0] = (unsigned char)number;
 		jc->send_subcommand(0x01, 0x30, buf, 1);
+	}
+	else if(jc != nullptr && jc->controller_type == ControllerType::s_ds) {
+	    jc->player_number = number;
+        jc->set_ds5_rumble_light(
+                jc->small_rumble,
+                jc->big_rumble,
+                jc->led_r,
+                jc->led_g,
+                jc->led_b,
+                jc->player_number);
 	}
 }
