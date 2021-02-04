@@ -39,6 +39,7 @@
 #define JSMASK_PS 0x10000
 #define JSMASK_CAPTURE 0x20000
 #define JSMASK_TOUCHPAD_CLICK 0x20000
+#define JSMASK_MIC 0x40000
 #define JSMASK_SL 0x40000
 #define JSMASK_SR 0x80000
 
@@ -64,8 +65,16 @@
 #define JSOFFSET_PS 16
 #define JSOFFSET_CAPTURE 17
 #define JSOFFSET_TOUCHPAD_CLICK 17
+#define JSOFFSET_MIC 18
 #define JSOFFSET_SL 18
 #define JSOFFSET_SR 19
+
+// PS5 Player maps for the DS Player Lightbar
+#define DS5_PLAYER_1 = 4
+#define DS5_PLAYER_2 = 10
+#define DS5_PLAYER_3 = 21
+#define DS5_PLAYER_4 = 27
+#define DS5_PLAYER_5 = 31
 
 typedef struct JOY_SHOCK_STATE {
 	int buttons;
