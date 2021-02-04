@@ -1288,25 +1288,12 @@ public:
 
         // Header & Report Information
         buf[0] = 0xa2; // Output report header, needs to be included in crc32
-        buf[1] = 0x02; // DualSense output report is 0x0
+        buf[1] = 0x02; // DualSense output report is 0x02 for USB
         //buf[1] = 0x02; // DATA (0x02)
 
-        // Comment stolen from DS4Windows:
-        // 0x01 Set the main motors (also requires flag 0x02)
-        // 0x02 Set the main motors (also requires flag 0x01)
-        // 0x04 Set the right trigger motor
-        // 0x08 Set the left trigger motor
-        // 0x10 Enable modification of audio volume
-        // 0x20 Enable internal speaker (even while headset is connected)
-        // 0x40 Enable modification of microphone volume
-        // 0x80 Enable internal mic (even while headset is connected)
+
         buf[2] = 0x03;
 
-        // Comment stolen from DS4Windows:
-        // 0x01 Toggling microphone LED, 0x02 Toggling Audio/Mic Mute
-        // 0x04 Toggling LED strips on the sides of the Touchpad, 0x08 Turn off all LED lights
-        // 0x10 Toggle player LED lights below Touchpad, 0x20 ???
-        // 0x40 Adjust overall motor/effect power, 0x80 ???
         buf[3] = 0x54; // Toggle LED Strips, player lights, motor effect. Ignore Mic LED
 
         // Rumble emulation bytes.
@@ -1344,7 +1331,7 @@ public:
         //buf[77] = (crc >> 8) & 0xFF;
         //buf[78] = crc & 0xFF;
 
-        hid_write(handle, buf, 74);
+        hid_write(handle, &buf[1], 74);
     }
 
 	// Calling the Dualsense anything but the DS5 is confusing, since DS also = DualShock, and the DualSense is the PS5 Controller anyway
