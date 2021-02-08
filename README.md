@@ -1,7 +1,7 @@
 # JoyShockLibrary
-The Sony PlayStation DualShock 4, Nintendo Switch JoyCons (used in pairs), and Nintendo Switch Pro Controller have much in common. They have many of the features expected of modern game controllers. They also have an incredibly versatile and underutilised input that their biggest rival (Microsoft's Xbox One controller) doesn't have: the gyro.
+The Sony PlayStation's DualShock 4, DualSense, Nintendo Switch Joy-Cons (used in pairs), and Nintendo Switch Pro Controller have much in common. They have many of the features expected of modern game controllers. They also have an incredibly versatile and underutilised input that their biggest rival (Microsoft's Xbox One controller) doesn't have: the gyro.
 
-My goal with JoyShockLibrary is to enable game developers to support DS4, JoyCons, and Pro Controllers natively in PC games. I've compiled the library for Windows, but it uses platform-agnostic tools, and my hope is that other developers would be able to get it working on other platforms (such as Linux or Mac) without too much trouble.
+My goal with JoyShockLibrary is to enable game developers to support DS4, DS, Joy-Cons, and Pro Controllers natively in PC games. I've compiled the library for Windows, but it uses platform-agnostic tools, and my hope is that other developers would be able to get it working on other platforms (such as Linux or Mac) without too much trouble.
 
 ## Contents
 * **[Releases](#releases)**
@@ -21,7 +21,7 @@ The latest version of JoyShockLibrary can always be found [here](https://github.
 *JoyShockLibrary.h* has everything you need to use the library, but here's a breakdown of everything in there.
 
 ### Structs
-**struct JOY\_SHOCK\_STATE** - This struct contains the state for all the sticks, buttons, and triggers on the controller. If you're just using JoyShockLibrary to be able to use JoyCons, Pro Controllers, and DualShock 4s similarly to how you'd use other devices, this has everything you need to know.
+**struct JOY\_SHOCK\_STATE** - This struct contains the state for all the sticks, buttons, and triggers on the controller. If you're just using JoyShockLibrary to be able to use Joy-Cons, Pro Controllers, DualSenses, and DualShock 4s similarly to how you'd use other devices, this has everything you need to know.
 * **int buttons** contains the states of all the controller's buttons with the following masks:
   * ```0x00001``` - d-pad ```up```
   * ```0x00002``` - d-pad ```down```
@@ -41,8 +41,8 @@ The latest version of JoyShockLibrary can always be found [here](https://github.
   * ```0x08000``` - the North face-button: ```X``` on Nintendo devices, ```△``` on DS4
   * ```0x10000``` - ```Home``` on Nintendo devices, ```PS``` on DS4
   * ```0x20000``` - ```Capture``` on Nintendo devices, ```touchpad click``` on DS4, ```Create``` on DS5
-  * ```0x40000``` - ```SL``` on Nintendo JoyCons, ```Mic``` on DS5
-  * ```0x80000``` - ```SR``` on Nintendo JoyCons
+  * ```0x40000``` - ```SL``` on Nintendo Joy-Cons, ```Mic``` on DS5
+  * ```0x80000``` - ```SR``` on Nintendo Joy-Cons
 * **float lTrigger** - how far has the left trigger been pressed? This will be 1 or 0 on Nintendo devices, which don't have analog triggers
 * **float rTrigger** - how far has the right trigger been pressed? This will be 1 or 0 on Nintendo devices, which don't have analog triggers
 * **float stickLX, stickLY** - left-stick X axis and Y axis, respectively, from -1 to 1
@@ -114,8 +114,8 @@ All these functions *should* be thread-safe, and none of them should cause any h
 **void JslSetTouchCallback(void(\*callback)(int, TOUCH\_STATE, TOUCH\_STATE, float))** - Set a callback function by which JoyShockLibrary can report the current touchpad state for each device. Only DualShock 4s will use this. This callback will be given the *deviceId* for the reporting device, its current and previous touchpad states, and the amount of time since the last report for this device (in seconds).
 
 **int JslGetControllerType(int deviceId)** - What type of controller is this device?
-  1. Left JoyCon
-  2. Right JoyCon
+  1. Left Joy-Con
+  2. Right Joy-Con
   3. Switch Pro Controller
   4. DualShock 4
   5. DualSense
@@ -141,7 +141,7 @@ Player 5: ```xxxxx```
 
 ## Known and Perceived Issues
 ### Bluetooth connectivity
-JoyCons and Pro Controllers are normally only be connected by Bluetooth. Some Bluetooth adapters can't keep up with these devices, resulting in laggy input. This is especially common when more than one device is connected (such as when using a pair of JoyCons). There is nothing JoyShockMapper or JoyShockLibrary can do about this.
+Joy-Cons and Pro Controllers are normally only be connected by Bluetooth. Some Bluetooth adapters can't keep up with these devices, resulting in laggy input. This is especially common when more than one device is connected (such as when using a pair of Joy-Cons). There is nothing JoyShockMapper or JoyShockLibrary can do about this.
 
 There is experimental support for connecting supported Switch controllers by USB now. Please let me know if you have any issues (or success!) with it.
 
@@ -160,6 +160,7 @@ JoyShockLibrary v2 changes the gyro and accelerometer axes from previous version
 I'm Jibb Smart, and I made JoyShockLibrary. JoyShockLibrary has also benefited from the contributions of:
 * Romeo Calota (Linux support + general portability improvements)
 * RollinBarrel (touchpad support)
+* Robin (wireless DS4/5 support)
 
 JoyShockLibrary uses substantial portions of mfosse's [JoyCon-Driver](https://github.com/mfosse/JoyCon-Driver), a [vJoy](http://vjoystick.sourceforge.net/site/) feeder for most communication with Nintendo devices, building on it with info from dekuNukem's [Nintendo Switch Reverse Engineering](https://github.com/dekuNukem/Nintendo_Switch_Reverse_Engineering/) page in order to (for example) unpack all gyro and accelerometer samples from each report.
 
