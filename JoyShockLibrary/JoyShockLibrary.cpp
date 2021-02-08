@@ -362,6 +362,7 @@ void JslDisconnectAndDisposeAll()
 {
 	// no more callback
 	JslSetCallback(nullptr);
+	JslSetTouchCallback(nullptr);
 
 	for (std::pair<int, JoyShock*> pair : _joyshocks)
 	{
