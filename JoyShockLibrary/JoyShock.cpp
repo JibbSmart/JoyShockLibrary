@@ -1479,7 +1479,7 @@ public:
 			res = hid_write(handle, buf, sizeof(*hdr) + sizeof(*pkt));
 
 			res = hid_read_timeout(handle, buf, sizeof(buf), 1000);
-			if (res == 0)
+			if (res == 0 || res == -1)
 			{
 				return false;
 			}
