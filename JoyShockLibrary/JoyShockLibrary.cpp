@@ -441,13 +441,36 @@ MOTION_STATE JslGetMotionState(int deviceId)
 	}
 	return {};
 }
-TOUCH_STATE JslGetTouchState(int deviceId)
+TOUCH_STATE JslGetTouchState(int deviceId, bool previous)
 {
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
-		return jc->touch_state;
+		return previous ? jc->last_touch_state : jc->touch_state;
 	}
 	return {};
+}
+
+bool JslGetTouchpadDimension(int deviceId, int &sizeX, int &sizeY)
+{
+	// I am assuming a single touchpad (or all touchpads are the same dimension)?
+	JoyShock* jc = GetJoyShockFromHandle(deviceId);
+	if (jc != nullptr)
+	{
+		switch (jc->controller_type)
+		{
+		case JS_TYPE_DS4:
+		case JS_TYPE_DS:
+			sizeX = 1920;
+			sizeY = 943;
+			break;
+		default:
+			sizeX = 0;
+			sizeY = 0;
+			break;
+		}
+		return true;
+	}
+	return false;
 }
 
 int JslGetButtons(int deviceId)
