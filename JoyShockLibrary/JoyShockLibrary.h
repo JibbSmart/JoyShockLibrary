@@ -149,7 +149,8 @@ extern "C" JOY_SHOCK_API void JslDisconnectAndDisposeAll();
 extern "C" JOY_SHOCK_API JOY_SHOCK_STATE JslGetSimpleState(int deviceId);
 extern "C" JOY_SHOCK_API IMU_STATE JslGetIMUState(int deviceId);
 extern "C" JOY_SHOCK_API MOTION_STATE JslGetMotionState(int deviceId);
-extern "C" JOY_SHOCK_API TOUCH_STATE JslGetTouchState(int deviceId);
+extern "C" JOY_SHOCK_API TOUCH_STATE JslGetTouchState(int deviceId, bool previous = false);
+extern "C" JOY_SHOCK_API bool JslGetTouchpadDimension(int deviceId, int &sizeX, int &sizeY);
 
 extern "C" JOY_SHOCK_API int JslGetButtons(int deviceId);
 

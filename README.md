@@ -73,7 +73,9 @@ All these functions *should* be thread-safe, and none of them should cause any h
 
 **MOTION\_STATE JslGetMotionState(int deviceId)** - Get the latest motion state for the controller with the given id.
 
-**TOUCH\_STATE JslGetTouchState(int deviceId)** - Get the latest touchpad state for the controller with the given id. Only DualShock 4s support this.
+**TOUCH\_STATE JslGetTouchState(int deviceId, bool previous = false)** - Get the latest or previous touchpad state for the controller with the given id. Only DualShock 4s and DualSense support this.
+
+**bool JslGetTouchpadDimension(int deviceId, int &sizeX, int &sizeY)** - Get the dimension of the touchpad. This is useful to abstract the resolution of different touchpads.
 
 **int JslGetButtons(int deviceId)** - Get the latest button state for the controller with the given id. If you want more than just the buttons, it's more efficient to use JslGetSimpleState.
 
