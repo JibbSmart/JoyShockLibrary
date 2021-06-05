@@ -1,6 +1,10 @@
 // JoyShockLibrary.cpp : Defines the exported functions for the DLL application.
 //
 
+#ifdef _WIN32
+#include <Windows.h>
+#endif
+
 #include "JoyShockLibrary.h"
 #include <bitset>
 #include "hidapi.h"
@@ -9,7 +13,6 @@
 #include <shared_mutex>
 #include <unordered_map>
 #include <atomic>
-#include "SensorFusion.cpp"
 #include "JoyShock.cpp"
 #include "InputHelpers.cpp"
 
@@ -175,8 +178,27 @@ void pollIndividualLoop(JoyShock *jc) {
 	}
 }
 
+#ifdef _WIN32
+static BOOL UnicodeToMByte(LPCWSTR unicodeStr, LPSTR multiByteStr, DWORD size)
+{
+	// Get the required size of the buffer that receives the multiByte string. 
+	DWORD minSize;
+	minSize = WideCharToMultiByte(CP_OEMCP, NULL, unicodeStr, -1, NULL, 0, NULL, FALSE);
+	if (size < minSize)
+	{
+		return FALSE;
+	}
+	// Convert string from Unicode to multi-byte.
+	WideCharToMultiByte(CP_OEMCP, NULL, unicodeStr, -1, multiByteStr, size, NULL, FALSE);
+	return TRUE;
+}
+#endif 
+
+
 int JslConnectDevices()
 {
+	char tempString[1024];
+
 	// for writing to console:
 	//freopen("CONOUT$", "w", stdout);
 	if (_joyshocks.size() > 0) {
@@ -256,9 +278,42 @@ int JslConnectDevices()
 	while (cur_dev) {
 		// brook usb ds4:
 		printf("Brook DS4\n");
+		//doesn't seem super reliable unless u already know all IDs...
 		if (cur_dev->product_id == BROOK_DS4_USB) {
 			JoyShock* jc = new JoyShock(cur_dev, GetUniqueHandle());
 			_joyshocks.emplace(jc->intHandle, jc);
+		}
+		else { //unkown product but gamepad based
+			//Ozzy note: only modified this case, maybe you should do the same for others registration parts??
+			if (cur_dev->product_string != NULL) {
+
+				#ifdef USE_ANY_FILTER
+				#ifdef _WIN32
+				UnicodeToMByte(cur_dev->product_string, tempString, 1024);
+				#else
+				strcpy(tempString, cur_dev->product_string);
+				#endif
+				strlwr(tempString);
+				if (strstr(tempString, "pad") || strstr(tempString, "ds") || strstr(tempString, "shock"))
+				#endif
+				{
+					//we don't want to add same device multiple times so use product unique ID instead of incremented ID!
+					std::unordered_map<int, JoyShock*>::const_iterator got = _joyshocks.find(cur_dev->product_id);
+
+					if (got == _joyshocks.end()) {
+						JoyShock* jc = new JoyShock(cur_dev, cur_dev->product_id/*GetUniqueHandle()*/);
+						_joyshocks.emplace(jc->intHandle, jc);
+						if (jc != NULL) {
+							jc->name = std::string("DualShock 4");
+							jc->left_right = 3; // left and right?
+							jc->controller_type = ControllerType::s_ds4;
+							jc->is_usb = true; // this controller is wired
+						}
+					}
+
+				}
+			}
+
 		}
 
 		cur_dev = cur_dev->next;

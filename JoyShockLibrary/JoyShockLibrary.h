@@ -2,7 +2,12 @@
 #pragma once
 
 #if _MSC_VER // this is defined when compiling with Visual Studio
+#ifdef USE_JOYSHOCK_DLL //used when generating a DLL instead of static lib
 #define JOY_SHOCK_API __declspec(dllexport) // Visual Studio needs annotating exported functions with this
+#else
+#define JOY_SHOCK_API
+#endif
+
 #else
 #define JOY_SHOCK_API // XCode does not need annotating exported functions, so define is empty
 #endif
