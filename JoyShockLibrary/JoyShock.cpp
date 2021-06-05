@@ -9,6 +9,8 @@
 #include <atomic>
 #include "tools.cpp"
 #include <cstring>
+#include "SensorFusion.cpp"
+
 
 #ifdef __GNUC__
 #define _wcsdup wcsdup
