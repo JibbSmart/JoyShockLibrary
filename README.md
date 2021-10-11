@@ -107,6 +107,8 @@ All these functions *should* be thread-safe, and none of them should cause any h
 
 **void JslPauseContinuousCalibration(int deviceId)** - Stop collecting gyro data, but don't delete it.
 
+**void JslSetAutomaticCalibration(int deviceId, bool enabled)** - Enable to have gyro automatically recalibrated when the controller is at rest or held very still. Disable to return to manual calibration using the above functions.
+
 **void JslGetCalibrationOffset(int deviceId, float& xOffset, float& yOffset, float& zOffset)** - Get the calibrated offset value for the given device's gyro. You don't have to use it; all gyro output for this device is already being offset by this vector before leaving JoyShockLibrary.
 
 **void JslSetCalibrationOffset(int deviceId, float xOffset, float yOffset, float zOffset)** - Manually set the calibrated offset value for the given device's gyro.
@@ -170,12 +172,14 @@ JoyShockLibrary's DualShock 4 support would likely not be possible without the i
 
 This software depends on signal11's [HIDAPI](https://github.com/signal11/hidapi) to connect to USB and Bluetooth devices.
 
+The gravity calculation and gyro calibration is handled by another library of mine, [GamepadMotionHelpers](https://github.com/jibbsmart/gamepadmotionhelpers). Making it a separate library means you can make use of its robust sensor fusion calculation and automatic calibration options regardless of what you're using to read from the controller itself.
+
 ## Helpful Resources
 * [GyroWiki](http://gyrowiki.jibbsmart.com) - All about good gyro controls for games:
   * Why gyro controls make gaming better;
   * How developers can do a better job implementing gyro controls;
   * How to use JoyShockLibrary;
-  * How gamers can play any PC game with gyro controls using [JoyShockMapper](https://github.com/JibbSmart/JoyShockMapper), which uses JoyShockLibrary to read from supported controllers.
+  * How gamers can play any PC game with gyro controls using [JoyShockMapper](https://github.com/JibbSmart/JoyShockMapper). Legacy versions use JoyShockLibrary to read from supported controllers, but the standard version uses SDL2 to support more controllers.
 
 ## License
 JoyShockLibrary is licensed under the MIT License - see [LICENSE.md](LICENSE.md).

@@ -44,15 +44,6 @@ enum ControllerType { n_switch, s_ds4, s_ds };
 #define JOYCON_CHARGING_GRIP 0x200e
 #define L_OR_R(lr) (lr == 1 ? 'L' : (lr == 2 ? 'R' : '?'))
 
-// internal. Don't expose this in JoyShockLibrary.hpp:
-typedef struct GYRO_AVERAGE_WINDOW {
-	float x;
-	float y;
-	float z;
-	float accelMagnitude;
-	int numSamples;
-} GYRO_AVERAGE_WINDOW;
-
 class JoyShock {
 
 public:
@@ -79,7 +70,7 @@ public:
 	TOUCH_STATE touch_state = {};
 	TOUCH_STATE last_touch_state = {};
 
-	Motion motion;
+	GamepadMotion motion;
 
 	int8_t dstick;
 	uint8_t battery;
@@ -131,16 +122,6 @@ public:
 	// for calibration:
 	bool use_continuous_calibration = false;
 	bool cue_motion_reset = false;
-	float offset_x = 0.0f;
-	float offset_y = 0.0f;
-	float offset_z = 0.0f;
-	float accel_magnitude = 1.0f;
-
-	// for continuous calibration
-	static const int num_gyro_average_windows = 16;
-	int gyro_average_window_front_index = 0;
-	int gyro_average_window_seconds = 600; // TODO: Function to set this for this device and for all devices. Different players might have different settings
-	GYRO_AVERAGE_WINDOW gyro_average_window[num_gyro_average_windows];
 
 	unsigned char factory_stick_cal[0x12];
 	unsigned char device_colours[0xC];
@@ -346,102 +327,25 @@ public:
 	}
 
 	void reset_continuous_calibration() {
-		for (int i = 0; i < num_gyro_average_windows; i++) {
-			this->gyro_average_window[i] = {};
-		}
+		motion.ResetContinuousCalibration();
 	}
 
-	int get_gyro_average_window_total_samples_for_device() {
-		if (this->controller_type == ControllerType::s_ds4) {
-			// 250 samples per second
-			return 250 * this->gyro_average_window_seconds;
-		}
-		// 67 samples per second
-		return 67 * this->gyro_average_window_seconds;
+	void push_sensor_samples(float gyroX, float gyroY, float gyroZ, float accelX, float accelY, float accelZ, float deltaTima) {
+		motion.ProcessMotion(gyroX, gyroY, gyroZ, accelX, accelY, accelZ, deltaTima);
 	}
 
-	int get_gyro_average_window_single_samples_for_device() {
-		return get_gyro_average_window_total_samples_for_device() / (num_gyro_average_windows - 2);
-	}
-
-	void push_sensor_samples(float x, float y, float z, float accelMagnitude) {
-		// push samples
-		GYRO_AVERAGE_WINDOW* windowPointer = this->gyro_average_window + this->gyro_average_window_front_index;
-		if (windowPointer->numSamples >= get_gyro_average_window_single_samples_for_device()) {
-			// next
-			this->gyro_average_window_front_index = (this->gyro_average_window_front_index + num_gyro_average_windows - 1) % num_gyro_average_windows;
-			this->gyro_average_window[this->gyro_average_window_front_index] = {};
-			windowPointer = this->gyro_average_window + this->gyro_average_window_front_index;
-		}
-		// accumulate
-		windowPointer->numSamples++;
-		windowPointer->x += x;
-		windowPointer->y += y;
-		windowPointer->z += z;
-		windowPointer->accelMagnitude += accelMagnitude;
-	}
-
-	void get_average_gyro(float& x, float& y, float& z, float& accelMagnitude) {
-		float weight = 0.0f;
-		float totalX = 0.0f;
-		float totalY = 0.0f;
-		float totalZ = 0.0f;
-		float totalAccelMagnitude = 0.0f;
-		int samplesAccumulated = 0;
-		int samplesWanted = this->get_gyro_average_window_total_samples_for_device();
-		float samplesPerWindow = (float)(this->get_gyro_average_window_single_samples_for_device());
-		//int numSamplesAvailable = 0;
-		//for (int i = 0; i < num_gyro_average_windows && samplesWanted > 0; i++) {
-		//	numSamplesAvailable += this->gyro_average_window[i].numSamples;
-		//}
-
-		// get the average of each window
-		// and a weighted average of all those averages, weighted by the number of samples it has compared to how many samples a full window will have.
-		// this isn't a perfect rolling average. the last window, which has more samples than we need, will have its contribution weighted according to how many samples it would ideally have for the current span of time.
-		for (int i = 0; i < num_gyro_average_windows && samplesWanted > 0; i++) {
-			int cycledIndex = (i + this->gyro_average_window_front_index) % num_gyro_average_windows;
-			GYRO_AVERAGE_WINDOW* windowPointer = this->gyro_average_window + cycledIndex;
-			if (windowPointer->numSamples == 0)
-			{
-				continue;
-			}
-			float thisWeight = 1.0f;
-			float fNumSamples = (float)(windowPointer->numSamples);
-			if (samplesWanted < windowPointer->numSamples)
-			{
-				thisWeight = ((float)(samplesWanted)) / windowPointer->numSamples;
-				samplesWanted = 0;
-			}
-			else
-			{
-				thisWeight = fNumSamples / samplesPerWindow;
-				samplesWanted -= windowPointer->numSamples;
-			}
-
-			//printf("[%.1f] [%d] [%.1f]; ", \
-						//	windowPointer->y,
-//	(int)fNumSamples,
-//	thisWeight);
-
-			totalX += (windowPointer->x / fNumSamples) * thisWeight;
-			totalY += (windowPointer->y / fNumSamples) * thisWeight;
-			totalZ += (windowPointer->z / fNumSamples) * thisWeight;
-			totalAccelMagnitude += (windowPointer->accelMagnitude / fNumSamples) * thisWeight;
-			weight += thisWeight;
-		}
-		if (weight > 0.0) {
-			x = totalX / weight;
-			y = totalY / weight;
-			z = totalZ / weight;
-			accelMagnitude = totalAccelMagnitude / weight;
-		}
-		//printf("{%.1f, %.1f, %.1f} {%d}\n", x, y, z, numSamplesAvailable);
-		//printf("{%.1f} {%d}\n", y, numSamplesAvailable);
+	void get_calibrated_gyro(float& gyroX, float& gyroY, float& gyroZ)
+	{
+		motion.GetCalibratedGyro(gyroX, gyroY, gyroZ);
 	}
 
 	MOTION_STATE get_motion_state()
 	{
-		return motion.GetMotionState();
+		MOTION_STATE motionState = MOTION_STATE();
+		motion.GetProcessedAcceleration(motionState.accelX, motionState.accelY, motionState.accelZ);
+		motion.GetOrientation(motionState.quatW, motionState.quatX, motionState.quatY, motionState.quatZ);
+		motion.GetGravity(motionState.gravX, motionState.gravY, motionState.gravZ);
+		return motionState;
 	}
 
 	bool hid_exchange(hid_device *handle, unsigned char *buf, int len) {

@@ -20,6 +20,12 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 	auto time_now = std::chrono::steady_clock::now();
 	jc->delta_time = (float)(std::chrono::duration_cast<std::chrono::microseconds>(time_now - jc->last_polled).count() / 1000000.0);
 	jc->last_polled = time_now;
+	if (jc->cue_motion_reset)
+	{
+		//printf("RESET motion\n");
+		jc->cue_motion_reset = false;
+		jc->motion.Reset();
+	}
 	// ds4
 	if (jc->controller_type == ControllerType::s_ds4) {
 		int indexOffset = 0;
@@ -122,15 +128,10 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 			jc->simple_state.stickRX = (std::fmin)(1.0, (stick2_x - 127.0) / 127.0);
 			jc->simple_state.stickRY = (std::fmin)(1.0, (stick2_y - 127.0) / 127.0);
 
-			if (jc->use_continuous_calibration) {
-				jc->push_sensor_samples(jc->imu_state.gyroX, jc->imu_state.gyroY, jc->imu_state.gyroZ,
-					sqrtf(jc->imu_state.accelX * jc->imu_state.accelX + jc->imu_state.accelY * jc->imu_state.accelY + jc->imu_state.accelZ * jc->imu_state.accelZ));
-				jc->get_average_gyro(jc->offset_x, jc->offset_y, jc->offset_z, jc->accel_magnitude);
-			}
+			jc->push_sensor_samples(jc->imu_state.gyroX, jc->imu_state.gyroY, jc->imu_state.gyroZ,
+					jc->imu_state.accelX, jc->imu_state.accelY, jc->imu_state.accelZ, jc->delta_time);
 
-			jc->imu_state.gyroX -= jc->offset_x;
-			jc->imu_state.gyroY -= jc->offset_y;
-			jc->imu_state.gyroZ -= jc->offset_z;
+			jc->get_calibrated_gyro(jc->imu_state.gyroX, jc->imu_state.gyroY, jc->imu_state.gyroZ);
 		}
 
 		//printf("Buttons: %d LX: %.5f LY: %.5f RX: %.5f RY: %.5f GX: %.4f GY: %.4f GZ: %.4f\n", \
@@ -243,15 +244,10 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 		jc->simple_state.stickRX = (std::fmin)(1.0, (stick2_x - 127.0) / 127.0);
 		jc->simple_state.stickRY = (std::fmin)(1.0, (stick2_y - 127.0) / 127.0);
 
-		if (jc->use_continuous_calibration) {
-			jc->push_sensor_samples(jc->imu_state.gyroX, jc->imu_state.gyroY, jc->imu_state.gyroZ,
-				sqrtf(jc->imu_state.accelX * jc->imu_state.accelX + jc->imu_state.accelY * jc->imu_state.accelY + jc->imu_state.accelZ * jc->imu_state.accelZ));
-			jc->get_average_gyro(jc->offset_x, jc->offset_y, jc->offset_z, jc->accel_magnitude);
-		}
+		jc->push_sensor_samples(jc->imu_state.gyroX, jc->imu_state.gyroY, jc->imu_state.gyroZ,
+				jc->imu_state.accelX, jc->imu_state.accelY, jc->imu_state.accelZ, jc->delta_time);
 
-		jc->imu_state.gyroX -= jc->offset_x;
-		jc->imu_state.gyroY -= jc->offset_y;
-		jc->imu_state.gyroZ -= jc->offset_z;
+		jc->get_calibrated_gyro(jc->imu_state.gyroX, jc->imu_state.gyroY, jc->imu_state.gyroZ);
 
 		return true;
 	}
@@ -442,15 +438,10 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 
 			//printf("Switch accel: %.4f, %.4f, %.4f\n", jc->imu_state.accelX, jc->imu_state.accelY, jc->imu_state.accelZ);
 
-			if (jc->use_continuous_calibration) {
-				jc->push_sensor_samples(jc->imu_state.gyroX, jc->imu_state.gyroY, jc->imu_state.gyroZ,
-					sqrtf(jc->imu_state.accelX* jc->imu_state.accelX + jc->imu_state.accelY * jc->imu_state.accelY + jc->imu_state.accelZ * jc->imu_state.accelZ));
-				jc->get_average_gyro(jc->offset_x, jc->offset_y, jc->offset_z, jc->accel_magnitude);
-			}
+			jc->push_sensor_samples(jc->imu_state.gyroX, jc->imu_state.gyroY, jc->imu_state.gyroZ,
+					jc->imu_state.accelX, jc->imu_state.accelY, jc->imu_state.accelZ, jc->delta_time);
 
-			jc->imu_state.gyroX -= jc->offset_x;
-			jc->imu_state.gyroY -= jc->offset_y;
-			jc->imu_state.gyroZ -= jc->offset_z;
+			jc->get_calibrated_gyro(jc->imu_state.gyroX, jc->imu_state.gyroY, jc->imu_state.gyroZ);
 		}
 
 	}

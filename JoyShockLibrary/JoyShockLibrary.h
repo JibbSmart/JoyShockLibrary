@@ -190,6 +190,7 @@ extern "C" JOY_SHOCK_API float JslGetPollRate(int deviceId);
 extern "C" JOY_SHOCK_API void JslResetContinuousCalibration(int deviceId);
 extern "C" JOY_SHOCK_API void JslStartContinuousCalibration(int deviceId);
 extern "C" JOY_SHOCK_API void JslPauseContinuousCalibration(int deviceId);
+extern "C" JOY_SHOCK_API void JslSetAutomaticCalibration(int deviceId, bool enabled);
 extern "C" JOY_SHOCK_API void JslGetCalibrationOffset(int deviceId, float& xOffset, float& yOffset, float& zOffset);
 extern "C" JOY_SHOCK_API void JslSetCalibrationOffset(int deviceId, float xOffset, float yOffset, float zOffset);
 

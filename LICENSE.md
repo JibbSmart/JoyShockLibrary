@@ -14,10 +14,11 @@ This software incorporates some work from the following projects and their copyr
 * mfosse's JoyCon-Driver (JoyCon driver), Copyright 2018 Matthew Fosse: https://github.com/mfosse/JoyCon-Driver
 * chrippa's ds4drv (DualShock 4 driver), Copyright 2013-2014 Christopher Rosell: https://github.com/chrippa/ds4drv
 * Ryochan7 and Jay2Kings' DS4Windows (DualShock 4 input mapper), Copyright 2019 Travis Nickles: https://github.com/Ryochan7/DS4Windows
+* My GamepadMotionHelpers (gravity calculation and gyro calibration), Copyright 2020-2021 Julian Smart: https://github.com/JibbSmart/GamepadMotionHelpers
 
 ---
 
-This software also links to signal11's HIDAPI, and includes the source thereof in case it's needed for future builds. HIDAPI has its own permissive license: https://github.com/signal11/hidapi
+This software also links to signal11's HIDAPI. HIDAPI has its own permissive license: https://github.com/signal11/hidapi
 
 HIDAPI - Multi-Platform library for
 communication with HID devices.

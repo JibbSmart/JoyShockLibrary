@@ -9,7 +9,7 @@
 #include <shared_mutex>
 #include <unordered_map>
 #include <atomic>
-#include "SensorFusion.cpp"
+#include "GamepadMotion.hpp"
 #include "JoyShock.cpp"
 #include "InputHelpers.cpp"
 
@@ -110,28 +110,6 @@ void pollIndividualLoop(JoyShock *jc) {
 			// we want to be able to do these check-and-calls without fear of interruption by another thread. there could be many threads (as many as connected controllers),
 			// and the callback could be time-consuming (up to the user), so we use a readers-writer-lock.
 			if (handle_input(jc, buf, 64, hasIMU)) { // but the user won't necessarily have a callback at all, so we'll skip the lock altogether in that case
-				if (hasIMU)
-				{
-					if (jc->cue_motion_reset)
-					{
-						//printf("RESET motion\n");
-						jc->cue_motion_reset = false;
-						jc->motion.Reset();
-					}
-					jc->motion.Update(jc->imu_state.gyroX, jc->imu_state.gyroY, jc->imu_state.gyroZ,
-						jc->imu_state.accelX, jc->imu_state.accelY, jc->imu_state.accelZ,
-						jc->accel_magnitude, jc->delta_time);
-					//printf("gyro %.4f, %.4f, %.4f ... accel %.4f, %.4f, %.4f ... local accel %.4f, %.4f, %.4f ... grav %.4f, %.4f, %.4f ... quat %.4f, %.4f, %.4f, %.4f\n",
-					//	jc->imu_state.gyroX, jc->imu_state.gyroY, jc->imu_state.gyroZ,
-					//	jc->imu_state.accelX, jc->imu_state.accelY, jc->imu_state.accelZ,
-					//	jc->motion.Accel.x, jc->motion.Accel.y, jc->motion.Accel.z,
-					//	jc->motion.Grav.x, jc->motion.Grav.y, jc->motion.Grav.z,
-					//	jc->motion.Quaternion.w, jc->motion.Quaternion.x, jc->motion.Quaternion.y, jc->motion.Quaternion.z);
-				}
-				else
-				{
-					//printf("No IMU input detected\n");
-				}
 				if (_pollCallback != nullptr || _pollTouchCallback != nullptr)
 				{
 					_callbackLock.lock_shared();
@@ -700,20 +678,22 @@ void JslPauseContinuousCalibration(int deviceId) {
 		jc->use_continuous_calibration = false;
 	}
 }
+void JslSetAutomaticCalibration(int deviceId, bool enabled) {
+	JoyShock* jc = GetJoyShockFromHandle(deviceId);
+	if (jc != nullptr) {
+		jc->motion.SetCalibrationMode(enabled ? GamepadMotionHelpers::CalibrationMode::SensorFusion | GamepadMotionHelpers::CalibrationMode::Stillness : GamepadMotionHelpers::CalibrationMode::Manual);
+	}
+}
 void JslGetCalibrationOffset(int deviceId, float& xOffset, float& yOffset, float& zOffset) {
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
-		xOffset = jc->offset_x;
-		yOffset = jc->offset_y;
-		zOffset = jc->offset_z;
+		jc->motion.GetCalibrationOffset(xOffset, yOffset, zOffset);
 	}
 }
 void JslSetCalibrationOffset(int deviceId, float xOffset, float yOffset, float zOffset) {
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
-		jc->offset_x = xOffset;
-		jc->offset_y = yOffset;
-		jc->offset_z = zOffset;
+		jc->motion.SetCalibrationOffset(xOffset, yOffset, zOffset, 1);
 	}
 }
 
