@@ -330,8 +330,8 @@ public:
 		motion.ResetContinuousCalibration();
 	}
 
-	void push_sensor_samples(float gyroX, float gyroY, float gyroZ, float accelX, float accelY, float accelZ, float deltaTima) {
-		motion.ProcessMotion(gyroX, gyroY, gyroZ, accelX, accelY, accelZ, deltaTima);
+	void push_sensor_samples(float gyroX, float gyroY, float gyroZ, float accelX, float accelY, float accelZ, float deltaTime) {
+		motion.ProcessMotion(gyroX, gyroY, gyroZ, accelX, accelY, accelZ, deltaTime);
 	}
 
 	void get_calibrated_gyro(float& gyroX, float& gyroY, float& gyroZ)

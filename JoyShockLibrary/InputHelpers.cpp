@@ -26,6 +26,17 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 		jc->cue_motion_reset = false;
 		jc->motion.Reset();
 	}
+	if (jc->motion.GetCalibrationMode() == GamepadMotionHelpers::CalibrationMode::Manual)
+	{
+		if (jc->use_continuous_calibration)
+		{
+			jc->motion.StartContinuousCalibration();
+		}
+		else
+		{
+			jc->motion.PauseContinuousCalibration();
+		}
+	}
 	// ds4
 	if (jc->controller_type == ControllerType::s_ds4) {
 		int indexOffset = 0;
