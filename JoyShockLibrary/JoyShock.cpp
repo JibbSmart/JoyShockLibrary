@@ -1065,8 +1065,9 @@ public:
 		//Let the Joy-Con talk BT again    
 		buf[0] = 0x80;
 		buf[1] = 0x05;
-		hid_exchange(this->handle, buf, 0x2);
-		//printf("Deinitialized %s\n", this->name.c_str());
+
+		hid_set_nonblocking(this->handle, 1);
+		hid_write(handle, buf, 0x2);
 	}
 
 	void set_ds5_rumble_light(unsigned char smallRumble, unsigned char bigRumble,
