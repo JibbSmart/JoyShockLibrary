@@ -385,14 +385,14 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 		// Accelerometer data is absolute
 		{
 			// get accelerometer X:
-			int16_t accelSampleZ = uint16_to_int16(packet[13] | (packet[14] << 8) & 0xFF00);
-			int16_t accelSampleX = uint16_to_int16(packet[15] | (packet[16] << 8) & 0xFF00);
-			int16_t accelSampleY = uint16_to_int16(packet[17] | (packet[18] << 8) & 0xFF00);
-			int16_t gyroSampleX = uint16_to_int16(packet[19] | (packet[20] << 8) & 0xFF00);
-			int16_t gyroSampleY = uint16_to_int16(packet[21] | (packet[22] << 8) & 0xFF00);
-			int16_t gyroSampleZ = uint16_to_int16(packet[23] | (packet[24] << 8) & 0xFF00);
+			float accelSampleZ = (float)uint16_to_int16(packet[13] | (packet[14] << 8) & 0xFF00) * jc->acc_cal_coeff[0];
+			float accelSampleX = (float)uint16_to_int16(packet[15] | (packet[16] << 8) & 0xFF00) * jc->acc_cal_coeff[1];
+			float accelSampleY = (float)uint16_to_int16(packet[17] | (packet[18] << 8) & 0xFF00) * jc->acc_cal_coeff[2];
+			float gyroSampleX = (float)uint16_to_int16(packet[19] | (packet[20] << 8) & 0xFF00) * jc->gyro_cal_coeff[0];
+			float gyroSampleY = (float)uint16_to_int16(packet[21] | (packet[22] << 8) & 0xFF00) * jc->gyro_cal_coeff[1];
+			float gyroSampleZ = (float)uint16_to_int16(packet[23] | (packet[24] << 8) & 0xFF00) * jc->gyro_cal_coeff[2];
 
-			if ((gyroSampleX | gyroSampleY | gyroSampleZ | accelSampleX | accelSampleY | accelSampleZ) == 0)
+			if (gyroSampleX == 0.f && gyroSampleY == 0.f && gyroSampleZ == 0.f && accelSampleX == 0.f && accelSampleY == 0.f && accelSampleZ == 0.f)
 			{
 				// all zero?
 				hasIMU = false;
@@ -406,12 +406,12 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 			float totalGyroY = gyroSampleY - jc->sensor_cal[1][1];
 			float totalGyroZ = gyroSampleZ - jc->sensor_cal[1][2];
 			// each packet actually has 3 samples worth of data, so collect sample 2
-			accelSampleZ = uint16_to_int16(packet[25] | (packet[26] << 8) & 0xFF00);
-			accelSampleX = uint16_to_int16(packet[27] | (packet[28] << 8) & 0xFF00);
-			accelSampleY = uint16_to_int16(packet[29] | (packet[30] << 8) & 0xFF00);
-			gyroSampleX = uint16_to_int16(packet[31] | (packet[32] << 8) & 0xFF00);
-			gyroSampleY = uint16_to_int16(packet[33] | (packet[34] << 8) & 0xFF00);
-			gyroSampleZ = uint16_to_int16(packet[35] | (packet[36] << 8) & 0xFF00);
+			accelSampleZ = (float)uint16_to_int16(packet[25] | (packet[26] << 8) & 0xFF00) * jc->acc_cal_coeff[0];
+			accelSampleX = (float)uint16_to_int16(packet[27] | (packet[28] << 8) & 0xFF00) * jc->acc_cal_coeff[1];
+			accelSampleY = (float)uint16_to_int16(packet[29] | (packet[30] << 8) & 0xFF00) * jc->acc_cal_coeff[2];
+			gyroSampleX = (float)uint16_to_int16(packet[31] | (packet[32] << 8) & 0xFF00) * jc->gyro_cal_coeff[0];
+			gyroSampleY = (float)uint16_to_int16(packet[33] | (packet[34] << 8) & 0xFF00) * jc->gyro_cal_coeff[1];
+			gyroSampleZ = (float)uint16_to_int16(packet[35] | (packet[36] << 8) & 0xFF00) * jc->gyro_cal_coeff[2];
 			//jc->push_sensor_samples(accelSampleX, accelSampleY, accelSampleZ, gyroSampleX, gyroSampleY, gyroSampleZ);
 			accelX += accelSampleX;
 			accelY += accelSampleY;
@@ -420,12 +420,12 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 			totalGyroY += gyroSampleY - jc->sensor_cal[1][1];
 			totalGyroZ += gyroSampleZ - jc->sensor_cal[1][2];
 			// ... and sample 3
-			accelSampleZ = uint16_to_int16(packet[37] | (packet[38] << 8) & 0xFF00);
-			accelSampleX = uint16_to_int16(packet[39] | (packet[40] << 8) & 0xFF00);
-			accelSampleY = uint16_to_int16(packet[41] | (packet[42] << 8) & 0xFF00);
-			gyroSampleX = uint16_to_int16(packet[43] | (packet[44] << 8) & 0xFF00);
-			gyroSampleY = uint16_to_int16(packet[45] | (packet[46] << 8) & 0xFF00);
-			gyroSampleZ = uint16_to_int16(packet[47] | (packet[48] << 8) & 0xFF00);
+			accelSampleZ = (float)uint16_to_int16(packet[37] | (packet[38] << 8) & 0xFF00) * jc->acc_cal_coeff[0];
+			accelSampleX = (float)uint16_to_int16(packet[39] | (packet[40] << 8) & 0xFF00) * jc->acc_cal_coeff[1];
+			accelSampleY = (float)uint16_to_int16(packet[41] | (packet[42] << 8) & 0xFF00) * jc->acc_cal_coeff[2];
+			gyroSampleX = (float)uint16_to_int16(packet[43] | (packet[44] << 8) & 0xFF00) * jc->gyro_cal_coeff[0];
+			gyroSampleY = (float)uint16_to_int16(packet[45] | (packet[46] << 8) & 0xFF00) * jc->gyro_cal_coeff[1];
+			gyroSampleZ = (float)uint16_to_int16(packet[47] | (packet[48] << 8) & 0xFF00) * jc->gyro_cal_coeff[2];
 			//jc->push_sensor_samples(accelSampleX, accelSampleY, accelSampleZ, gyroSampleX, gyroSampleY, gyroSampleZ);
 			accelX += accelSampleX;
 			accelY += accelSampleY;
@@ -440,12 +440,12 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 			totalGyroX /= 3;
 			totalGyroY /= 3;
 			totalGyroZ /= 3;
-			jc->imu_state.accelX = (float)(accelX) / -4096.0;
-			jc->imu_state.accelY = (float)(accelY) / 4096.0;
-			jc->imu_state.accelZ = (float)(accelZ) / -4096.0;
-			jc->imu_state.gyroX = -(float)(totalGyroY) * (2294.0 / 32767.0);
-			jc->imu_state.gyroY = (float)(totalGyroZ) * (2294.0 / 32767.0);
-			jc->imu_state.gyroZ = (float)(totalGyroX) * (2294.0 / 32767.0);
+			jc->imu_state.accelX = -accelX;
+			jc->imu_state.accelY = accelY;
+			jc->imu_state.accelZ = -accelZ;
+			jc->imu_state.gyroX = -totalGyroY;
+			jc->imu_state.gyroY = totalGyroZ;
+			jc->imu_state.gyroZ = totalGyroX;
 
 			//printf("Switch accel: %.4f, %.4f, %.4f\n", jc->imu_state.accelX, jc->imu_state.accelY, jc->imu_state.accelZ);
 
