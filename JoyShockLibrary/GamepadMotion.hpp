@@ -1,6 +1,6 @@
-// Copyright (c) 2020-2021 Julian "Jibb" Smart
+// Copyright (c) 2020-2023 Julian "Jibb" Smart
 // Released under the MIT license. See https://github.com/JibbSmart/GamepadMotionHelpers/blob/main/LICENSE for more info
-// Version 6
+// Version 7
 
 #pragma once
 
@@ -233,6 +233,8 @@ public:
 	void GetGravity(float& x, float& y, float& z);
 	void GetProcessedAcceleration(float& x, float& y, float& z);
 	void GetOrientation(float& w, float& x, float& y, float& z);
+	void GetPlayerSpaceGyro(float& x, float& y, const float yawRelaxFactor = 1.41f);
+	void GetWorldSpaceGyro(float& x, float& y, const float sideReductionThreshold = 0.125f);
 
 	// gyro calibration functions
 	void StartContinuousCalibration();
@@ -265,7 +267,7 @@ private:
 
 namespace GamepadMotionHelpers
 {
-	Quat::Quat()
+	inline Quat::Quat()
 	{
 		w = 1.0f;
 		x = 0.0f;
@@ -273,7 +275,7 @@ namespace GamepadMotionHelpers
 		z = 0.0f;
 	}
 
-	Quat::Quat(float inW, float inX, float inY, float inZ)
+	inline Quat::Quat(float inW, float inX, float inY, float inZ)
 	{
 		w = inW;
 		x = inX;
@@ -281,14 +283,14 @@ namespace GamepadMotionHelpers
 		z = inZ;
 	}
 
-	static Quat AngleAxis(float inAngle, float inX, float inY, float inZ)
+	inline static Quat AngleAxis(float inAngle, float inX, float inY, float inZ)
 	{
 		Quat result = Quat(cosf(inAngle * 0.5f), inX, inY, inZ);
 		result.Normalize();
 		return result;
 	}
 
-	void Quat::Set(float inW, float inX, float inY, float inZ)
+	inline void Quat::Set(float inW, float inX, float inY, float inZ)
 	{
 		w = inW;
 		x = inX;
@@ -296,7 +298,7 @@ namespace GamepadMotionHelpers
 		z = inZ;
 	}
 
-	Quat& Quat::operator*=(const Quat& rhs)
+	inline Quat& Quat::operator*=(const Quat& rhs)
 	{
 		Set(w * rhs.w - x * rhs.x - y * rhs.y - z * rhs.z,
 			w * rhs.x + x * rhs.w + y * rhs.z - z * rhs.y,
@@ -305,13 +307,13 @@ namespace GamepadMotionHelpers
 		return *this;
 	}
 
-	Quat operator*(Quat lhs, const Quat& rhs)
+	inline Quat operator*(Quat lhs, const Quat& rhs)
 	{
 		lhs *= rhs;
 		return lhs;
 	}
 
-	void Quat::Normalize()
+	inline void Quat::Normalize()
 	{
 		//printf("Normalizing: %.4f, %.4f, %.4f, %.4f\n", w, x, y, z);
 		const float length = sqrtf(x * x + y * y + z * z);
@@ -332,14 +334,14 @@ namespace GamepadMotionHelpers
 		return;
 	}
 
-	Quat Quat::Normalized() const
+	inline Quat Quat::Normalized() const
 	{
 		Quat result = *this;
 		result.Normalize();
 		return result;
 	}
 
-	void Quat::Invert()
+	inline void Quat::Invert()
 	{
 		x = -x;
 		y = -y;
@@ -347,52 +349,52 @@ namespace GamepadMotionHelpers
 		return;
 	}
 
-	Quat Quat::Inverse() const
+	inline Quat Quat::Inverse() const
 	{
 		Quat result = *this;
 		result.Invert();
 		return result;
 	}
 
-	Vec::Vec()
+	inline Vec::Vec()
 	{
 		x = 0.0f;
 		y = 0.0f;
 		z = 0.0f;
 	}
 
-	Vec::Vec(float inValue)
+	inline Vec::Vec(float inValue)
 	{
 		x = inValue;
 		y = inValue;
 		z = inValue;
 	}
 
-	Vec::Vec(float inX, float inY, float inZ)
+	inline Vec::Vec(float inX, float inY, float inZ)
 	{
 		x = inX;
 		y = inY;
 		z = inZ;
 	}
 
-	void Vec::Set(float inX, float inY, float inZ)
+	inline void Vec::Set(float inX, float inY, float inZ)
 	{
 		x = inX;
 		y = inY;
 		z = inZ;
 	}
 
-	float Vec::Length() const
+	inline float Vec::Length() const
 	{
 		return sqrtf(x * x + y * y + z * z);
 	}
 
-	float Vec::LengthSquared() const
+	inline float Vec::LengthSquared() const
 	{
 		return x * x + y * y + z * z;
 	}
 
-	void Vec::Normalize()
+	inline void Vec::Normalize()
 	{
 		const float length = Length();
 		if (length == 0.0)
@@ -407,131 +409,131 @@ namespace GamepadMotionHelpers
 		return;
 	}
 
-	Vec Vec::Normalized() const
+	inline Vec Vec::Normalized() const
 	{
 		Vec result = *this;
 		result.Normalize();
 		return result;
 	}
 
-	Vec& Vec::operator+=(const Vec& rhs)
+	inline Vec& Vec::operator+=(const Vec& rhs)
 	{
 		Set(x + rhs.x, y + rhs.y, z + rhs.z);
 		return *this;
 	}
 
-	Vec operator+(Vec lhs, const Vec& rhs)
+	inline Vec operator+(Vec lhs, const Vec& rhs)
 	{
 		lhs += rhs;
 		return lhs;
 	}
 
-	Vec& Vec::operator-=(const Vec& rhs)
+	inline Vec& Vec::operator-=(const Vec& rhs)
 	{
 		Set(x - rhs.x, y - rhs.y, z - rhs.z);
 		return *this;
 	}
 
-	Vec operator-(Vec lhs, const Vec& rhs)
+	inline Vec operator-(Vec lhs, const Vec& rhs)
 	{
 		lhs -= rhs;
 		return lhs;
 	}
 
-	Vec& Vec::operator*=(const float rhs)
+	inline Vec& Vec::operator*=(const float rhs)
 	{
 		Set(x * rhs, y * rhs, z * rhs);
 		return *this;
 	}
 
-	Vec operator*(Vec lhs, const float rhs)
+	inline Vec operator*(Vec lhs, const float rhs)
 	{
 		lhs *= rhs;
 		return lhs;
 	}
 
-	Vec& Vec::operator/=(const float rhs)
+	inline Vec& Vec::operator/=(const float rhs)
 	{
 		Set(x / rhs, y / rhs, z / rhs);
 		return *this;
 	}
 
-	Vec operator/(Vec lhs, const float rhs)
+	inline Vec operator/(Vec lhs, const float rhs)
 	{
 		lhs /= rhs;
 		return lhs;
 	}
 
-	Vec& Vec::operator*=(const Quat& rhs)
+	inline Vec& Vec::operator*=(const Quat& rhs)
 	{
 		Quat temp = rhs * Quat(0.0f, x, y, z) * rhs.Inverse();
 		Set(temp.x, temp.y, temp.z);
 		return *this;
 	}
 
-	Vec operator*(Vec lhs, const Quat& rhs)
+	inline Vec operator*(Vec lhs, const Quat& rhs)
 	{
 		lhs *= rhs;
 		return lhs;
 	}
 
-	Vec Vec::operator-() const
+	inline Vec Vec::operator-() const
 	{
 		Vec result = Vec(-x, -y, -z);
 		return result;
 	}
 
-	float Vec::Dot(const Vec& other) const
+	inline float Vec::Dot(const Vec& other) const
 	{
 		return x * other.x + y * other.y + z * other.z;
 	}
 
-	Vec Vec::Cross(const Vec& other) const
+	inline Vec Vec::Cross(const Vec& other) const
 	{
 		return Vec(y * other.z - z * other.y,
 			z * other.x - x * other.z,
 			x * other.y - y * other.x);
 	}
 
-	Vec Vec::Min(const Vec& other) const
+	inline Vec Vec::Min(const Vec& other) const
 	{
 		return Vec(x < other.x ? x : other.x,
 			y < other.y ? y : other.y,
 			z < other.z ? z : other.z);
 	}
 	
-	Vec Vec::Max(const Vec& other) const
+	inline Vec Vec::Max(const Vec& other) const
 	{
 		return Vec(x > other.x ? x : other.x,
 			y > other.y ? y : other.y,
 			z > other.z ? z : other.z);
 	}
 
-	Vec Vec::Abs() const
+	inline Vec Vec::Abs() const
 	{
 		return Vec(x > 0 ? x : -x,
 			y > 0 ? y : -y,
 			z > 0 ? z : -z);
 	}
 
-	Vec Vec::Lerp(const Vec& other, float factor) const
+	inline Vec Vec::Lerp(const Vec& other, float factor) const
 	{
 		return *this + (other - *this) * factor;
 	}
 
-	Vec Vec::Lerp(const Vec& other, const Vec& factor) const
+	inline Vec Vec::Lerp(const Vec& other, const Vec& factor) const
 	{
 		return Vec(this->x + (other.x - this->x) * factor.x,
 			this->y + (other.y - this->y) * factor.y,
 			this->z + (other.z - this->z) * factor.z);
 	}
 
-	Motion::Motion()
+	inline Motion::Motion()
 	{
 		Reset();
 	}
 
-	void Motion::Reset()
+	inline void Motion::Reset()
 	{
 		Quaternion.Set(1.f, 0.f, 0.f, 0.f);
 		Accel.Set(0.f, 0.f, 0.f);
@@ -543,7 +545,7 @@ namespace GamepadMotionHelpers
 	/// <summary>
 	/// The gyro inputs should be calibrated degrees per second but have no other processing. Acceleration is in G units (1 = approx. 9.8m/s^2)
 	/// </summary>
-	void Motion::Update(float inGyroX, float inGyroY, float inGyroZ, float inAccelX, float inAccelY, float inAccelZ, float gravityLength, float deltaTime)
+	inline void Motion::Update(float inGyroX, float inGyroY, float inGyroZ, float inAccelX, float inAccelY, float inAccelZ, float gravityLength, float deltaTime)
 	{
 		if (!Settings)
 		{
@@ -630,7 +632,7 @@ namespace GamepadMotionHelpers
 			const float errorAngle = acosf(std::clamp(Vec(0.0f, -1.0f, 0.0f).Dot(gravityDirection), -1.f, 1.f));
 			const Vec flattened = Vec(0.0f, -1.0f, 0.0f).Cross(gravityDirection);
 			Quat correctionQuat = AngleAxis(errorAngle, flattened.x, flattened.y, flattened.z);
-			Quaternion = correctionQuat * Quaternion;
+			Quaternion = Quaternion * correctionQuat;
 			
 			Accel = accel + Grav;
 		}
@@ -642,23 +644,23 @@ namespace GamepadMotionHelpers
 		Quaternion.Normalize();
 	}
 
-	void Motion::SetSettings(GamepadMotionSettings* settings)
+	inline void Motion::SetSettings(GamepadMotionSettings* settings)
 	{
 		Settings = settings;
 	}
 
-	SensorMinMaxWindow::SensorMinMaxWindow()
+	inline SensorMinMaxWindow::SensorMinMaxWindow()
 	{
 		Reset(0.f);
 	}
 
-	void SensorMinMaxWindow::Reset(float remainder)
+	inline void SensorMinMaxWindow::Reset(float remainder)
 	{
 		NumSamples = 0;
 		TimeSampled = remainder;
 	}
 
-	void SensorMinMaxWindow::AddSample(const Vec& inGyro, const Vec& inAccel, float deltaTime)
+	inline void SensorMinMaxWindow::AddSample(const Vec& inGyro, const Vec& inAccel, float deltaTime)
 	{
 		if (NumSamples == 0)
 		{
@@ -689,19 +691,19 @@ namespace GamepadMotionHelpers
 		MeanAccel += delta * (1.f / NumSamples);
 	}
 
-	Vec SensorMinMaxWindow::GetMidGyro()
+	inline Vec SensorMinMaxWindow::GetMidGyro()
 	{
 		return MeanGyro;
 	}
 
-	AutoCalibration::AutoCalibration()
+	inline AutoCalibration::AutoCalibration()
 	{
 		CalibrationData = nullptr;
 		MinMaxWindow.TimeSampled = 0.f;
 		TimeSteadyStillness = 0.f;
 	}
 
-	bool AutoCalibration::AddSampleStillness(const Vec& inGyro, const Vec& inAccel, float deltaTime, bool doSensorFusion)
+	inline bool AutoCalibration::AddSampleStillness(const Vec& inGyro, const Vec& inAccel, float deltaTime, bool doSensorFusion)
 	{
 		if (inGyro.x == 0.f && inGyro.y == 0.f && inGyro.z == 0.f &&
 			inAccel.x == 0.f && inAccel.y == 0.f && inAccel.z == 0.f)
@@ -853,12 +855,12 @@ namespace GamepadMotionHelpers
 		return calibrated;
 	}
 
-	void AutoCalibration::NoSampleStillness()
+	inline void AutoCalibration::NoSampleStillness()
 	{
 		MinMaxWindow.Reset(0.f);
 	}
 
-	bool AutoCalibration::AddSampleSensorFusion(const Vec& inGyro, const Vec& inAccel, float deltaTime)
+	inline bool AutoCalibration::AddSampleSensorFusion(const Vec& inGyro, const Vec& inAccel, float deltaTime)
 	{
 		if (deltaTime <= 0.f)
 		{
@@ -994,7 +996,7 @@ namespace GamepadMotionHelpers
 		return calibrated;
 	}
 
-	void AutoCalibration::NoSampleSensorFusion()
+	inline void AutoCalibration::NoSampleSensorFusion()
 	{
 		TimeSteadySensorFusion = 0.f;
 		SensorFusionSkippedTime = 0.f;
@@ -1004,19 +1006,19 @@ namespace GamepadMotionHelpers
 		SmoothedAngularVelocityAccel = GamepadMotionHelpers::Vec();
 	}
 
-	void AutoCalibration::SetCalibrationData(GyroCalibration* calibrationData)
+	inline void AutoCalibration::SetCalibrationData(GyroCalibration* calibrationData)
 	{
 		CalibrationData = calibrationData;
 	}
 
-	void AutoCalibration::SetSettings(GamepadMotionSettings* settings)
+	inline void AutoCalibration::SetSettings(GamepadMotionSettings* settings)
 	{
 		Settings = settings;
 	}
 
 } // namespace GamepadMotionHelpers
 
-GamepadMotion::GamepadMotion()
+inline GamepadMotion::GamepadMotion()
 {
 	IsCalibrating = false;
 	CurrentCalibrationMode = GamepadMotionHelpers::CalibrationMode::Manual;
@@ -1026,7 +1028,7 @@ GamepadMotion::GamepadMotion()
 	Motion.SetSettings(&Settings);
 }
 
-void GamepadMotion::Reset()
+inline void GamepadMotion::Reset()
 {
 	GyroCalibration = {};
 	Gyro = {};
@@ -1035,7 +1037,7 @@ void GamepadMotion::Reset()
 	Motion.Reset();
 }
 
-void GamepadMotion::ProcessMotion(float gyroX, float gyroY, float gyroZ,
+inline void GamepadMotion::ProcessMotion(float gyroX, float gyroY, float gyroZ,
 	float accelX, float accelY, float accelZ, float deltaTime)
 {
 	if (gyroX == 0.f && gyroY == 0.f && gyroZ == 0.f &&
@@ -1090,28 +1092,28 @@ void GamepadMotion::ProcessMotion(float gyroX, float gyroY, float gyroZ,
 }
 
 // reading the current state
-void GamepadMotion::GetCalibratedGyro(float& x, float& y, float& z)
+inline void GamepadMotion::GetCalibratedGyro(float& x, float& y, float& z)
 {
 	x = Gyro.x;
 	y = Gyro.y;
 	z = Gyro.z;
 }
 
-void GamepadMotion::GetGravity(float& x, float& y, float& z)
+inline void GamepadMotion::GetGravity(float& x, float& y, float& z)
 {
 	x = Motion.Grav.x;
 	y = Motion.Grav.y;
 	z = Motion.Grav.z;
 }
 
-void GamepadMotion::GetProcessedAcceleration(float& x, float& y, float& z)
+inline void GamepadMotion::GetProcessedAcceleration(float& x, float& y, float& z)
 {
 	x = Motion.Accel.x;
 	y = Motion.Accel.y;
 	z = Motion.Accel.z;
 }
 
-void GamepadMotion::GetOrientation(float& w, float& x, float& y, float& z)
+inline void GamepadMotion::GetOrientation(float& w, float& x, float& y, float& z)
 {
 	w = Motion.Quaternion.w;
 	x = Motion.Quaternion.x;
@@ -1119,29 +1121,69 @@ void GamepadMotion::GetOrientation(float& w, float& x, float& y, float& z)
 	z = Motion.Quaternion.z;
 }
 
+inline void GamepadMotion::GetPlayerSpaceGyro(float& x, float& y, const float yawRelaxFactor)
+{
+	// take gravity into account without taking on any error from gravity. Explained in depth at http://gyrowiki.jibbsmart.com/blog:player-space-gyro-and-alternatives-explained#toc7
+	const float worldYaw = -(Motion.Grav.y * Gyro.y + Motion.Grav.z * Gyro.z);
+	const float worldYawSign = worldYaw < 0.f ? -1.f : 1.f;
+	y = worldYawSign * std::min(std::abs(worldYaw) * yawRelaxFactor, sqrtf(Gyro.y * Gyro.y + Gyro.z * Gyro.z));
+	x = Gyro.x;
+}
+
+inline void GamepadMotion::GetWorldSpaceGyro(float& x, float& y, const float sideReductionThreshold)
+{
+	// use the gravity direction as the yaw axis, and derive an appropriate pitch axis. Explained in depth at http://gyrowiki.jibbsmart.com/blog:player-space-gyro-and-alternatives-explained#toc6
+	const float worldYaw = -Motion.Grav.Dot(Gyro);
+	// project local pitch axis (X) onto gravity plane
+	const float gravDotPitchAxis = Motion.Grav.x;
+	GamepadMotionHelpers::Vec pitchAxis(1.f - Motion.Grav.x * gravDotPitchAxis,
+		-Motion.Grav.y * gravDotPitchAxis,
+		-Motion.Grav.z * gravDotPitchAxis);
+	// normalize
+	const float pitchAxisLengthSquared = pitchAxis.LengthSquared();
+	if (pitchAxisLengthSquared > 0.f)
+	{
+		const float pitchAxisLength = sqrtf(pitchAxisLengthSquared);
+		const float lengthReciprocal = 1.f / pitchAxisLength;
+		pitchAxis *= lengthReciprocal;
+
+		const float flatness = std::abs(Motion.Grav.y);
+		const float upness = std::abs(Motion.Grav.z);
+		const float sideReduction = sideReductionThreshold <= 0.f ? 1.f : std::clamp((std::max(flatness, upness) - sideReductionThreshold) / sideReductionThreshold, 0.f, 1.f);
+
+		x = sideReduction * pitchAxis.Dot(Gyro);
+	}
+	else
+	{
+		x = 0.f;
+	}
+
+	y = worldYaw;
+}
+
 // gyro calibration functions
-void GamepadMotion::StartContinuousCalibration()
+inline void GamepadMotion::StartContinuousCalibration()
 {
 	IsCalibrating = true;
 }
 
-void GamepadMotion::PauseContinuousCalibration()
+inline void GamepadMotion::PauseContinuousCalibration()
 {
 	IsCalibrating = false;
 }
 
-void GamepadMotion::ResetContinuousCalibration()
+inline void GamepadMotion::ResetContinuousCalibration()
 {
 	GyroCalibration = {};
 }
 
-void GamepadMotion::GetCalibrationOffset(float& xOffset, float& yOffset, float& zOffset)
+inline void GamepadMotion::GetCalibrationOffset(float& xOffset, float& yOffset, float& zOffset)
 {
 	float accelMagnitude;
 	GetCalibratedSensor(xOffset, yOffset, zOffset, accelMagnitude);
 }
 
-void GamepadMotion::SetCalibrationOffset(float xOffset, float yOffset, float zOffset, int weight)
+inline void GamepadMotion::SetCalibrationOffset(float xOffset, float yOffset, float zOffset, int weight)
 {
 	if (GyroCalibration.NumSamples > 1)
 	{
@@ -1158,24 +1200,24 @@ void GamepadMotion::SetCalibrationOffset(float xOffset, float yOffset, float zOf
 	GyroCalibration.Z = zOffset * weight;
 }
 
-GamepadMotionHelpers::CalibrationMode GamepadMotion::GetCalibrationMode()
+inline GamepadMotionHelpers::CalibrationMode GamepadMotion::GetCalibrationMode()
 {
 	return CurrentCalibrationMode;
 }
 
-void GamepadMotion::SetCalibrationMode(GamepadMotionHelpers::CalibrationMode calibrationMode)
+inline void GamepadMotion::SetCalibrationMode(GamepadMotionHelpers::CalibrationMode calibrationMode)
 {
 	CurrentCalibrationMode = calibrationMode;
 }
 
-void GamepadMotion::ResetMotion()
+inline void GamepadMotion::ResetMotion()
 {
 	Motion.Reset();
 }
 
 // Private Methods
 
-void GamepadMotion::PushSensorSamples(float gyroX, float gyroY, float gyroZ, float accelMagnitude)
+inline void GamepadMotion::PushSensorSamples(float gyroX, float gyroY, float gyroZ, float accelMagnitude)
 {
 	// accumulate
 	GyroCalibration.NumSamples++;
@@ -1185,7 +1227,7 @@ void GamepadMotion::PushSensorSamples(float gyroX, float gyroY, float gyroZ, flo
 	GyroCalibration.AccelMagnitude += accelMagnitude;
 }
 
-void GamepadMotion::GetCalibratedSensor(float& gyroOffsetX, float& gyroOffsetY, float& gyroOffsetZ, float& accelMagnitude)
+inline void GamepadMotion::GetCalibratedSensor(float& gyroOffsetX, float& gyroOffsetY, float& gyroOffsetZ, float& accelMagnitude)
 {
 	if (GyroCalibration.NumSamples <= 0)
 	{
