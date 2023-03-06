@@ -15,7 +15,7 @@ My goal with JoyShockLibrary is to enable game developers to support DS4, DS, Jo
 * **[License](#license)**
 
 ## Releases
-The latest version of JoyShockLibrary can always be found [here](https://github.com/JibbSmart/JoyShockLibrary/releases). Included is a 64-bit dll and a 32-bit dll, both for Windows, and JoyShockLibrary.h and JoyShockLibrary.cs for using the dll in C/C++ and C\# (Unity), respectively.
+The latest version of JoyShockLibrary can always be found [here](https://github.com/JibbSmart/JoyShockLibrary/releases). Included is a 64-bit dll and a 32-bit dll, both for Windows, and JoyShockLibrary.h and JoyShockLibrary.cs for using the dll in C/C++ and C\# (Unity), respectively. The .cs file isn't up to date with the latest features, but should provide a starting point for your use.
 
 ## Reference
 *JoyShockLibrary.h* has everything you need to use the library, but here's a breakdown of everything in there.
@@ -165,6 +165,7 @@ I'm Jibb Smart, and I made JoyShockLibrary. JoyShockLibrary has also benefited f
 * Romeo Calota (Linux support + general portability improvements)
 * RollinBarrel (touchpad support)
 * Robin (wireless DS4/5 support)
+* And others
 
 JoyShockLibrary uses substantial portions of mfosse's [JoyCon-Driver](https://github.com/mfosse/JoyCon-Driver), a [vJoy](http://vjoystick.sourceforge.net/site/) feeder for most communication with Nintendo devices, building on it with info from dekuNukem's [Nintendo Switch Reverse Engineering](https://github.com/dekuNukem/Nintendo_Switch_Reverse_Engineering/) page in order to (for example) unpack all gyro and accelerometer samples from each report.
 
@@ -179,7 +180,7 @@ The gravity calculation and gyro calibration is handled by another library of mi
   * Why gyro controls make gaming better;
   * How developers can do a better job implementing gyro controls;
   * How to use JoyShockLibrary;
-  * How gamers can play any PC game with gyro controls using [JoyShockMapper](https://github.com/JibbSmart/JoyShockMapper). Legacy versions use JoyShockLibrary to read from supported controllers, but the standard version uses SDL2 to support more controllers.
+  * How gamers can play any PC game with gyro controls using [JoyShockMapper](https://github.com/Electronicks/JoyShockMapper). Legacy versions use JoyShockLibrary to read from supported controllers, but the standard version uses SDL2 to support more controllers.
 
 ## License
 JoyShockLibrary is licensed under the MIT License - see [LICENSE.md](LICENSE.md).
