@@ -70,11 +70,11 @@
 #define JSOFFSET_SR 19
 
 // PS5 Player maps for the DS Player Lightbar
-#define DS5_PLAYER_1 = 4
-#define DS5_PLAYER_2 = 10
-#define DS5_PLAYER_3 = 21
-#define DS5_PLAYER_4 = 27
-#define DS5_PLAYER_5 = 31
+#define DS5_PLAYER_1 4
+#define DS5_PLAYER_2 10
+#define DS5_PLAYER_3 21
+#define DS5_PLAYER_4 27
+#define DS5_PLAYER_5 31
 
 typedef struct JOY_SHOCK_STATE {
 	int buttons;
