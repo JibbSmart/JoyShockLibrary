@@ -285,8 +285,11 @@ namespace GamepadMotionHelpers
 
 	inline static Quat AngleAxis(float inAngle, float inX, float inY, float inZ)
 	{
-		Quat result = Quat(cosf(inAngle * 0.5f), inX, inY, inZ);
-		result.Normalize();
+		const float sinHalfAngle = sinf(inAngle * 0.5f);
+		Vec inAxis = Vec(inX, inY, inZ);
+		inAxis.Normalize();
+		inAxis *= sinHalfAngle;
+		Quat result = Quat(cosf(inAngle * 0.5f), inAxis.x, inAxis.y, inAxis.z);
 		return result;
 	}
 
@@ -571,7 +574,7 @@ namespace GamepadMotionHelpers
 		Quat rotation = AngleAxis(angle, axis.x, axis.y, axis.z);
 		Quaternion *= rotation; // do it this way because it's a local rotation, not global
 
-		//printf("Quat: %.4f %.4f %.4f %.4f _",
+		//printf("Quat: %.4f %.4f %.4f %.4f\n",
 		//	Quaternion.w, Quaternion.x, Quaternion.y, Quaternion.z);
 		float accelMagnitude = accel.Length();
 		if (accelMagnitude > 0.0f)
