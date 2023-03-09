@@ -318,22 +318,14 @@ namespace GamepadMotionHelpers
 
 	inline void Quat::Normalize()
 	{
-		//printf("Normalizing: %.4f, %.4f, %.4f, %.4f\n", w, x, y, z);
-		const float length = sqrtf(x * x + y * y + z * z);
-		float targetLength = 1.0f - w * w;
-		if (targetLength <= 0.0f || length <= 0.0f)
-		{
-			Set(1.0f, 0.0f, 0.0f, 0.0f);
-			return;
-		}
-		targetLength = sqrtf(targetLength);
-		const float fixFactor = targetLength / length;
+		const float length = sqrtf(w * w + x * x + y * y + z * z);
+		const float fixFactor = 1.0f / length;
 
+		w *= fixFactor;
 		x *= fixFactor;
 		y *= fixFactor;
 		z *= fixFactor;
 
-		//printf("Normalized: %.4f, %.4f, %.4f, %.4f\n", w, x, y, z);
 		return;
 	}
 
