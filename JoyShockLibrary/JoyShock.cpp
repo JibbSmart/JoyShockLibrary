@@ -50,6 +50,8 @@ public:
 
 	hid_device * handle;
 	int intHandle = 0;
+	std::string path;
+
 	wchar_t *serial;
 
 	std::string name;
@@ -96,6 +98,8 @@ public:
 	float cal_x[1] = { 0.0f };
 	float cal_y[1] = { 0.0f };
 
+	bool initialised = false;
+
 	bool has_user_cal_stick_l = false;
 	bool has_user_cal_stick_r = false;
 	bool has_user_cal_sensor = false;
@@ -117,7 +121,7 @@ public:
 	int player_number = 0;
 
 	bool cancel_thread = false;
-	std::thread* thread;
+	std::thread* thread = nullptr;
 
 	// for calibration:
 	bool use_continuous_calibration = false;
@@ -229,7 +233,8 @@ public:
 	}
 
 public:
-	JoyShock(struct hid_device_info *dev, int uniqueHandle) {
+	JoyShock(struct hid_device_info *dev, int uniqueHandle, const std::string &inPath) {
+		this->path = inPath;
 
 		if (dev->product_id == JOYCON_CHARGING_GRIP) {
 
@@ -921,6 +926,8 @@ public:
 		//sensor_cal[1][2] = 0;
 
 		enable_gyro_ds4_bt(buf, 78);
+
+		initialised = true;
 	}
 
 	// placeholder to get things working quickly. overdue for a refactor
@@ -952,6 +959,8 @@ public:
 			stick_cal_y_l[2] =
 			stick_cal_x_r[2] =
 			stick_cal_y_r[2] = 255;
+
+		initialised = true;
 	}
 
 	// this is mostly copied from init_usb() below, but modified to speak DS4
@@ -1023,11 +1032,15 @@ public:
 		//sensor_cal[1][0] = 0;
 		//sensor_cal[1][1] = 0;
 		//sensor_cal[1][2] = 0;
+
+		initialised = true;
 	}
 
 	void deinit_ds4_bt() {
 		// TODO. For now, init, which stops rumbling and disables light
 		init_ds4_bt();
+
+		initialised = false;
 	}
 
 	// TODO: implement this
@@ -1057,6 +1070,8 @@ public:
 		hid_set_nonblocking(this->handle, 1);
 
 		hid_write(handle, buf, 31);
+
+		initialised = false;
 	}
 
 	void deinit_usb() {
@@ -1069,6 +1084,8 @@ public:
 
 		hid_set_nonblocking(this->handle, 1);
 		hid_write(handle, buf, 0x2);
+
+		initialised = false;
 	}
 
 	void set_ds5_rumble_light(unsigned char smallRumble, unsigned char bigRumble,
