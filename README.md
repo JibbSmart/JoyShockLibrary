@@ -61,7 +61,7 @@ The latest version of JoyShockLibrary can always be found [here](https://github.
 
 All these functions *should* be thread-safe, and none of them should cause any harm if given the wrong handle. If they do, please report this to me as an isuse.
 
-**int JslConnectDevices()** - Register any connected devices. Returns the number of devices connected, which is helpful for getting the handles for those devices with the next function.
+**int JslConnectDevices()** - Register any connected devices. Returns the number of devices connected, which is helpful for getting the handles for those devices with the next function. As of version 3, this will not interrupt current connections. So you can call this function at any time to check for new connections. To only call it when necessary, only do this when your OS notifies you of a new connection (eg WM_DEVICECHANGE on Windows).
 
 **int JslGetConnectedDeviceHandles(int\* deviceHandleArray, int size)** - Fills the array *deviceHandleArray* of size *size* with the handles for all connected devices, up to the length of the array. Use the length returned by *JslConnectDevices* to make sure you've got all connected devices' handles.
 
@@ -159,6 +159,9 @@ JoyShockLibrary v2 changes the gyro and accelerometer axes from previous version
 * Invert Gyro X
 * Swap Accel Z and Y
 * Then invert Accel Z
+
+JoyShockLibrary v3 makes some small changes to the behaviour of some functions:
+* **JslConnectDevices** no longer calls **JslDisconnectAndDisposeAll** before looking for connections. Instead of reconnecting all devices, it'll only make new connections, without disrupting current connections. If you were counting on the old behaviour, call JslDisconnectAndDisposeAll before calling JslConnectDevices.
 
 ## Credits
 I'm Jibb Smart, and I made JoyShockLibrary. JoyShockLibrary has also benefited from the contributions of:

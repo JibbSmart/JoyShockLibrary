@@ -16,31 +16,44 @@
 
 std::shared_timed_mutex _callbackLock;
 std::shared_timed_mutex _connectedLock;
-std::thread* _connectThread = nullptr;
-bool _cancel_polling_connections = false;
 void(*_pollCallback)(int, JOY_SHOCK_STATE, JOY_SHOCK_STATE, IMU_STATE, IMU_STATE, float) = nullptr;
 void(*_pollTouchCallback)(int, TOUCH_STATE, TOUCH_STATE, float) = nullptr;
 std::unordered_map<int, JoyShock*> _joyshocks;
 std::unordered_map<std::string, JoyShock*> _byPath;
+std::mutex _pathHandleLock;
+std::unordered_map<std::string, int> _pathHandle;
 // https://stackoverflow.com/questions/41206861/atomic-increment-and-return-counter
 static std::atomic<int> _joyshockHandleCounter;
-static int GetUniqueHandle()
+
+static int GetUniqueHandle(const std::string &path)
 {
-	return _joyshockHandleCounter++;
+	_pathHandleLock.lock();
+	auto iter = _pathHandle.find(path);
+
+	if (iter != _pathHandle.end())
+	{
+		_pathHandleLock.unlock();
+		return iter->second;
+	}
+	const int handle = _joyshockHandleCounter++;
+	_pathHandle.emplace(path, handle);
+	_pathHandleLock.unlock();
+
+	return handle;
 }
 
 // https://stackoverflow.com/questions/25144887/map-unordered-map-prefer-find-and-then-at-or-try-at-catch-out-of-range
 static JoyShock* GetJoyShockFromHandle(int handle) {
-	_connectedLock.lock();
+	_connectedLock.lock_shared();
 	auto iter = _joyshocks.find(handle);
 
 	if (iter != _joyshocks.end())
 	{
-		_connectedLock.unlock();
+		_connectedLock.unlock_shared();
 		return iter->second;
 		// iter is item pair in the map. The value will be accessible as `iter->second`.
 	}
-	_connectedLock.unlock();
+	_connectedLock.unlock_shared();
 	return nullptr;
 }
 
@@ -82,6 +95,13 @@ void pollIndividualLoop(JoyShock *jc) {
 			if (numTimeOuts == 10)
 			{
 				printf("Controller %d timed out\n", jc->handle);
+
+				_connectedLock.lock();
+				std::thread* thread = jc->thread;
+				thread->detach();
+				delete thread;
+				_connectedLock.unlock();
+
 				break;
 			}
 			else
@@ -160,44 +180,19 @@ void pollIndividualLoop(JoyShock *jc) {
 		}
 	}
 
-	if (!jc->cancel_thread)
-	{
-		// disconnect this device
-		_connectedLock.lock();
-		_joyshocks.erase(jc->intHandle);
-		_byPath.erase(jc->path);
-		_connectedLock.unlock();
-	}
+	// disconnect this device
+	_connectedLock.lock();
+	_joyshocks.erase(jc->intHandle);
+	_byPath.erase(jc->path);
+	delete jc;
+	_connectedLock.unlock();
 }
-
-void JslBeginPollingConnections(int waitMilliseconds);
-void PollConnections();
 
 int JslConnectDevices()
 {
 	// for writing to console:
 	freopen("CONOUT$", "w", stdout);
-	//if (_joyshocks.size() > 0) {
-	//	// already connected? clean up old stuff!
-	//	JslDisconnectAndDisposeAll();
-	//}
 
-	_connectThread = new std::thread(JslBeginPollingConnections, 500);
-
-	return 0;
-}
-
-void JslBeginPollingConnections(int waitMilliseconds)
-{
-	while (!_cancel_polling_connections)
-	{
-		PollConnections();
-		std::this_thread::sleep_for(std::chrono::milliseconds(waitMilliseconds));
-	}
-}
-
-void PollConnections()
-{
 	// most of the joycon and pro controller stuff here is thanks to mfosse's vjoy feeder
 	int read;	// number of bytes read
 	int written;// number of bytes written
@@ -210,47 +205,88 @@ void PollConnections()
 
 	int res = hid_init();
 
-	devs = hid_enumerate(JOYCON_VENDOR, 0x0);
+	devs = hid_enumerate(0x0, 0x0);
 	cur_dev = devs;
 	while (cur_dev) {
-		if (cur_dev->product_id == JOYCON_L_BT ||
-			cur_dev->product_id == JOYCON_R_BT ||
-			cur_dev->product_id == PRO_CONTROLLER ||
-			cur_dev->product_id == JOYCON_CHARGING_GRIP) {
-			const std::string path = std::string(cur_dev->path);
-			auto iter = _byPath.find(path);
-			if (iter == _byPath.end())
-			{
-				printf("path: %s\n", cur_dev->path);
-				JoyShock* jc = new JoyShock(cur_dev, GetUniqueHandle(), path);
-				_joyshocks.emplace(jc->intHandle, jc);
-				_byPath.emplace(path, jc);
-			}
-		}
-
-		cur_dev = cur_dev->next;
-	}
-	hid_free_enumeration(devs);
-
-	// find dualshocks
-	devs = hid_enumerate(DS_VENDOR, 0x0);
-	cur_dev = devs;
-	while (cur_dev) {
-		if (cur_dev->vendor_id == DS4_VENDOR) {
-			if (cur_dev->product_id == DS4_USB ||
+		bool isSupported = false;
+		bool isSwitch = false;
+		switch (cur_dev->vendor_id)
+		{
+		case JOYCON_VENDOR:
+			isSupported = cur_dev->product_id == JOYCON_L_BT ||
+				cur_dev->product_id == JOYCON_R_BT ||
+				cur_dev->product_id == PRO_CONTROLLER ||
+				cur_dev->product_id == JOYCON_CHARGING_GRIP;
+			isSwitch = true;
+			break;
+		case DS_VENDOR:
+			isSupported = cur_dev->product_id == DS4_USB ||
 				cur_dev->product_id == DS4_USB_V2 ||
 				cur_dev->product_id == DS4_USB_DONGLE ||
 				cur_dev->product_id == DS4_BT ||
-				cur_dev->product_id == DS_USB) {
-				const std::string path = std::string(cur_dev->path);
-				auto iter = _byPath.find(path);
-				if (iter == _byPath.end())
+				cur_dev->product_id == DS_USB;
+			break;
+		case BROOK_DS4_VENDOR:
+			isSupported = cur_dev->product_id == BROOK_DS4_USB;
+			break;
+		default:
+			break;
+		}
+		if (!isSupported)
+		{
+			cur_dev = cur_dev->next;
+			continue;
+		}
+
+		const std::string path = std::string(cur_dev->path);
+		auto iter = _byPath.find(path);
+		JoyShock* currentJc = nullptr;
+		bool isSameController = false;
+		if (iter != _byPath.end())
+		{
+			currentJc = iter->second;
+			isSameController = isSwitch == (currentJc->controller_type == ControllerType::n_switch);
+		}
+		if (iter == _byPath.end())
+		{
+			printf("path: %s\n", cur_dev->path);
+			hid_device* handle = hid_open_path(cur_dev->path);
+			if (handle != nullptr)
+			{
+				if (isSameController)
 				{
-					printf("path: %s\n", cur_dev->path);
-					printf("DS4\n");
-					JoyShock* jc = new JoyShock(cur_dev, GetUniqueHandle(), path);
+					// keep calibration stuff, but reset other stuff just in case it's actually a new controller
+					currentJc->init(cur_dev, handle, GetUniqueHandle(path), path);
+					currentJc = nullptr;
+				}
+				else
+				{
+					JoyShock* jc = new JoyShock(cur_dev, handle, GetUniqueHandle(path), path);
 					_joyshocks.emplace(jc->intHandle, jc);
 					_byPath.emplace(path, jc);
+				}
+
+				if (currentJc != nullptr)
+				{
+					// it's been replaced! get rid of it
+					if (currentJc->controller_type == ControllerType::s_ds4) {
+						if (currentJc->is_usb) {
+							currentJc->deinit_ds4_usb();
+						}
+						else {
+							currentJc->deinit_ds4_bt();
+						}
+					}
+					else if (currentJc->controller_type == ControllerType::s_ds) {
+
+					}
+					else if (currentJc->is_usb) {
+						currentJc->deinit_usb();
+					}
+					std::thread* thread = currentJc->thread;
+					currentJc->cancel_thread = true;
+					thread->detach();
+					delete thread;
 				}
 			}
 		}
@@ -258,27 +294,9 @@ void PollConnections()
 		cur_dev = cur_dev->next;
 	}
 	hid_free_enumeration(devs);
-	
-	// find Brook controllers (DS4 compatible)
-	devs = hid_enumerate(BROOK_DS4_VENDOR, 0x0);
-	cur_dev = devs;
-	while (cur_dev) {
-		// brook usb ds4:
-		if (cur_dev->product_id == BROOK_DS4_USB) {
-			const std::string path = std::string(cur_dev->path);
-			auto iter = _byPath.find(path);
-			if (iter == _byPath.end())
-			{
-				printf("Brook DS4\n");
-				JoyShock* jc = new JoyShock(cur_dev, GetUniqueHandle(), path);
-				_joyshocks.emplace(jc->intHandle, jc);
-				_byPath.emplace(path, jc);
-			}
-		}
 
-		cur_dev = cur_dev->next;
-	}
-	hid_free_enumeration(devs);
+	_connectedLock.unlock();
+	_connectedLock.lock_shared();
 
 	// init joyshocks:
 	for (std::pair<int, JoyShock*> pair : _joyshocks)
@@ -349,15 +367,15 @@ void PollConnections()
 	}
 
 	const int totalDevices = _joyshocks.size();
-	_connectedLock.unlock();
+	_connectedLock.unlock_shared();
 
-	//return totalDevices;
+	return totalDevices;
 }
 
 int JslGetConnectedDeviceHandles(int* deviceHandleArray, int size)
 {
 	int i = 0;
-	_connectedLock.lock();
+	_connectedLock.lock_shared();
 	for (std::pair<int, JoyShock*> pair : _joyshocks)
 	{
 		if (i >= size) {
@@ -366,7 +384,7 @@ int JslGetConnectedDeviceHandles(int* deviceHandleArray, int size)
 		deviceHandleArray[i] = pair.first;
 		i++;
 	}
-	_connectedLock.unlock();
+	_connectedLock.unlock_shared();
 	return i; // return num actually found
 }
 
@@ -378,21 +396,9 @@ void JslDisconnectAndDisposeAll()
 
 	_connectedLock.lock();
 
-	_cancel_polling_connections = true;
-	if (_connectThread != nullptr)
-	{
-		_connectThread->join();
-		_connectThread = nullptr;
-	}
-	_cancel_polling_connections = false;
-
 	for (std::pair<int, JoyShock*> pair : _joyshocks)
 	{
 		JoyShock* jc = pair.second;
-		// threads for polling
-		jc->cancel_thread = true;
-		jc->thread->join();
-		delete jc->thread;
 		if (jc->controller_type == ControllerType::s_ds4) {
 			if (jc->is_usb) {
 				jc->deinit_ds4_usb();
@@ -407,8 +413,11 @@ void JslDisconnectAndDisposeAll()
 		else if (jc->is_usb) {
 			jc->deinit_usb();
 		}
-		  // cleanup
-		delete pair.second;
+		// cleanup
+		std::thread* thread = jc->thread;
+		jc->cancel_thread = true;
+		thread->detach();
+		delete thread;
 	}
 	_joyshocks.clear();
 	_byPath.clear();

@@ -233,7 +233,7 @@ public:
 	}
 
 public:
-	JoyShock(struct hid_device_info *dev, int uniqueHandle, const std::string &inPath) {
+	void init(struct hid_device_info *dev, hid_device* inHandle, int uniqueHandle, const std::string &inPath) {
 		this->path = inPath;
 
 		if (dev->product_id == JOYCON_CHARGING_GRIP) {
@@ -291,7 +291,7 @@ public:
 		this->intHandle = uniqueHandle;
 
 		//printf("Found device %c: %ls %s\n", L_OR_R(this->left_right), this->serial, dev->path);
-		this->handle = hid_open_path(dev->path);
+		this->handle = inHandle;
 
 		if (this->controller_type == ControllerType::s_ds4) {
 			unsigned char buf[64];
@@ -305,7 +305,7 @@ public:
 				this->is_usb = false;
 			}
 		}
-		else if(this->controller_type == ControllerType::s_ds) {
+		else if (this->controller_type == ControllerType::s_ds) {
             unsigned char buf[64];
             memset(buf, 0, 64);
 
@@ -322,12 +322,22 @@ public:
 
         }
 
-		// initialise continuous calibration windows
-		reset_continuous_calibration();
-
 		if (this->handle == nullptr) {
 			//printf("Could not open serial %ls: %s\n", this->serial, strerror(errno));
 			throw;
+		}
+	}
+
+	JoyShock(struct hid_device_info* dev, hid_device* inHandle, int uniqueHandle, const std::string& inPath) {
+		init(dev, inHandle, uniqueHandle, inPath);
+
+		// initialise continuous calibration windows
+		reset_continuous_calibration();
+	}
+
+	~JoyShock() {
+		if (handle != nullptr) {
+			hid_close(handle);
 		}
 	}
 
