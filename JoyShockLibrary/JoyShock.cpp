@@ -119,8 +119,11 @@ public:
 	unsigned int right_grip_colour = 0xFFFFFF;
 
 	int player_number = 0;
+	int reuse_counter = 0;
 
 	bool cancel_thread = false;
+	bool delete_on_finish = false;
+	bool remove_on_finish = true;
 	std::thread* thread = nullptr;
 
 	// for calibration:

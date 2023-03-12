@@ -66,6 +66,7 @@ void pollIndividualLoop(JoyShock *jc) {
 	int numTimeOuts = 0;
 	int numNoIMU = 0;
 	bool hasIMU = false;
+	bool lockedThread = false;
 	int noIMULimit;
 	switch (jc->controller_type)
 	{
@@ -87,21 +88,47 @@ void pollIndividualLoop(JoyShock *jc) {
 		memset(buf, 0, 64);
 
 		// 10 seconds of no signal means forget this controller
+		int reuseCounter = jc->reuse_counter;
 		int res = hid_read_timeout(jc->handle, buf, 64, 1000);
+
+		if (res == -1)
+		{
+			// disconnected!
+			printf("Controller %d disconnected\n", jc->intHandle);
+
+			_connectedLock.lock();
+			lockedThread = true;
+			const bool gettingReused = jc->reuse_counter != reuseCounter;
+			jc->delete_on_finish = true;
+			if (gettingReused)
+			{
+				jc->remove_on_finish = false;
+				jc->delete_on_finish = false;
+				lockedThread = false;
+				_connectedLock.unlock();
+			}
+			break;
+		}
 
 		if (res == 0)
 		{
 			numTimeOuts++;
-			if (numTimeOuts == 10)
+			if (numTimeOuts >= 10)
 			{
-				printf("Controller %d timed out\n", jc->handle);
+				printf("Controller %d timed out\n", jc->intHandle);
 
+				// just make sure we get this thing deleted before someone else tries to start a new connection
 				_connectedLock.lock();
-				std::thread* thread = jc->thread;
-				thread->detach();
-				delete thread;
-				_connectedLock.unlock();
-
+				lockedThread = true;
+				const bool gettingReused = jc->reuse_counter != reuseCounter;
+				jc->delete_on_finish = true;
+				if (gettingReused)
+				{
+					jc->remove_on_finish = false;
+					jc->delete_on_finish = false;
+					lockedThread = false;
+					_connectedLock.unlock();
+				}
 				break;
 			}
 			else
@@ -180,12 +207,42 @@ void pollIndividualLoop(JoyShock *jc) {
 		}
 	}
 
+	if (jc->cancel_thread)
+	{
+		printf("\tending cancelled thread\n");
+	}
+	else
+	{
+		printf("\ttiming out thread\n");
+	}
+
+	// remove
+	if (jc->remove_on_finish)
+	{
+		printf("\t\tremoving jc\n");
+		if (!lockedThread)
+		{
+			_connectedLock.lock();
+		}
+		_joyshocks.erase(jc->intHandle);
+		_byPath.erase(jc->path);
+		if (!lockedThread)
+		{
+			_connectedLock.unlock();
+		}
+	}
+
 	// disconnect this device
-	_connectedLock.lock();
-	_joyshocks.erase(jc->intHandle);
-	_byPath.erase(jc->path);
-	delete jc;
-	_connectedLock.unlock();
+	if (jc->delete_on_finish)
+	{
+		printf("\t\tdeleting jc\n");
+		delete jc;
+	}
+
+	if (lockedThread)
+	{
+		_connectedLock.unlock();
+	}
 }
 
 int JslConnectDevices()
@@ -247,47 +304,74 @@ int JslConnectDevices()
 			currentJc = iter->second;
 			isSameController = isSwitch == (currentJc->controller_type == ControllerType::n_switch);
 		}
-		if (iter == _byPath.end())
+		printf("path: %s\n", cur_dev->path);
+
+		hid_device* handle = hid_open_path(cur_dev->path);
+		if (handle != nullptr)
 		{
-			printf("path: %s\n", cur_dev->path);
-			hid_device* handle = hid_open_path(cur_dev->path);
-			if (handle != nullptr)
+			printf("\topened new handle\n");
+			if (isSameController)
 			{
-				if (isSameController)
-				{
-					// keep calibration stuff, but reset other stuff just in case it's actually a new controller
-					currentJc->init(cur_dev, handle, GetUniqueHandle(path), path);
-					currentJc = nullptr;
-				}
-				else
-				{
-					JoyShock* jc = new JoyShock(cur_dev, handle, GetUniqueHandle(path), path);
-					_joyshocks.emplace(jc->intHandle, jc);
-					_byPath.emplace(path, jc);
-				}
+				printf("\tending old thread and joining\n");
+				// we'll get a new thread, so we need to delete the old one, but we need to actually wait for it, I think, because it'll be affected by init and all that...
+				// but we can't wait for it! That could deadlock if it happens to be about to disconnect or time out!
+				std::thread* thread = currentJc->thread;
+				currentJc->delete_on_finish = false;
+				currentJc->remove_on_finish = false;
+				currentJc->cancel_thread = true;
+				currentJc->reuse_counter++;
 
-				if (currentJc != nullptr)
-				{
-					// it's been replaced! get rid of it
-					if (currentJc->controller_type == ControllerType::s_ds4) {
-						if (currentJc->is_usb) {
-							currentJc->deinit_ds4_usb();
-						}
-						else {
-							currentJc->deinit_ds4_bt();
-						}
-					}
-					else if (currentJc->controller_type == ControllerType::s_ds) {
+				// finishing thread may be about to hit a lock
+				_connectedLock.unlock();
+				thread->join();
+				_connectedLock.lock();
 
+				delete thread;
+				currentJc->thread = nullptr;
+				// don't immediately cancel the next thread:
+				currentJc->cancel_thread = false;
+				currentJc->delete_on_finish = false;
+				currentJc->remove_on_finish = true;
+
+				printf("\tinitialising with new handle\n");
+				// keep calibration stuff, but reset other stuff just in case it's actually a new controller
+				currentJc->init(cur_dev, handle, GetUniqueHandle(path), path);
+				currentJc = nullptr;
+			}
+			else
+			{
+				printf("\tcreating new JoyShock\n");
+				JoyShock* jc = new JoyShock(cur_dev, handle, GetUniqueHandle(path), path);
+				_joyshocks.emplace(jc->intHandle, jc);
+				_byPath.emplace(path, jc);
+			}
+
+			if (currentJc != nullptr)
+			{
+				printf("\tdeinitialising old controller\n");
+				// it's been replaced! get rid of it
+				if (currentJc->controller_type == ControllerType::s_ds4) {
+					if (currentJc->is_usb) {
+						currentJc->deinit_ds4_usb();
 					}
-					else if (currentJc->is_usb) {
-						currentJc->deinit_usb();
+					else {
+						currentJc->deinit_ds4_bt();
 					}
-					std::thread* thread = currentJc->thread;
-					currentJc->cancel_thread = true;
-					thread->detach();
-					delete thread;
 				}
+				else if (currentJc->controller_type == ControllerType::s_ds) {
+
+				}
+				else if (currentJc->is_usb) {
+					currentJc->deinit_usb();
+				}
+				printf("\ending old thread\n");
+				std::thread* thread = currentJc->thread;
+				currentJc->delete_on_finish = true;
+				currentJc->remove_on_finish = false;
+				currentJc->cancel_thread = true;
+				thread->detach();
+				delete thread;
+				currentJc->thread = nullptr;
 			}
 		}
 
@@ -362,11 +446,13 @@ int JslConnectDevices()
 		// threads for polling
 		if (jc->thread == nullptr)
 		{
+			printf("\tstarting new thread\n");
 			jc->thread = new std::thread(pollIndividualLoop, jc);
 		}
 	}
 
 	const int totalDevices = _joyshocks.size();
+
 	_connectedLock.unlock_shared();
 
 	return totalDevices;
@@ -415,6 +501,8 @@ void JslDisconnectAndDisposeAll()
 		}
 		// cleanup
 		std::thread* thread = jc->thread;
+		jc->delete_on_finish = true;
+		jc->remove_on_finish = false;
 		jc->cancel_thread = true;
 		thread->detach();
 		delete thread;
