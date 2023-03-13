@@ -122,6 +122,7 @@ typedef struct TOUCH_STATE {
 extern "C" JOY_SHOCK_API int JslConnectDevices();
 extern "C" JOY_SHOCK_API int JslGetConnectedDeviceHandles(int* deviceHandleArray, int size);
 extern "C" JOY_SHOCK_API void JslDisconnectAndDisposeAll();
+extern "C" JOY_SHOCK_API bool JslStillConnected(int deviceId);
 
 // get buttons as bits in the following order, using North South East West to name face buttons to avoid ambiguity between Xbox and Nintendo layouts:
 // 0x00001: up

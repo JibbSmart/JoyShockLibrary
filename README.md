@@ -57,9 +57,14 @@ The latest version of JoyShockLibrary can always be found [here](https://github.
 * **float accelX, accelY, accelZ** - local acceleration after accounting for and removing the effect of gravity.
 * **float gravX, gravY, gravZ** - local gravity direction.
 
+#### Tip
+Quaternions are useful if you want to try and represent the device's 3D orientation in-game, with one major limitation: "yaw drift". Small errors will accumulate over time so that the quaternion orientation no longer matches the controller's real orientation. The gravity direction is used to counter this error in the roll and pitch axes, but there's nothing for countering the error in the yaw axis.
+
+Quaternions are **not** recommended for mouse-like aiming or cursor control. The gravity correction applied to the quaternion is not useful for these cases, and only introduces more error. For these, it's much better to use the calibrated gyro angular velocities.
+
 ### Functions
 
-All these functions *should* be thread-safe, and none of them should cause any harm if given the wrong handle. If they do, please report this to me as an isuse.
+All these functions *should* be thread-safe, and none of them should cause any harm if given the wrong or out-of-date deviceId. So even if a device gets disconnected between calling "JslStillConnected" and "JslGetSimpleState", the latter will just report all the sticks, triggers, and buttons untouched, and you'll detect the disconnection *next time* you call "JslStillConnected".
 
 **int JslConnectDevices()** - Register any connected devices. Returns the number of devices connected, which is helpful for getting the handles for those devices with the next function. As of version 3, this will not interrupt current connections. So you can call this function at any time to check for new connections. To only call it when necessary, only do this when your OS notifies you of a new connection (eg WM_DEVICECHANGE on Windows).
 
@@ -67,13 +72,15 @@ All these functions *should* be thread-safe, and none of them should cause any h
 
 **void JslDisconnectAndDisposeAll()** - Disconnect devices, no longer polling them for input.
 
+**bool JslStillConnected(int deviceId)** - Returns **true** if the controller with the given id is still connected.
+
 **JOY\_SHOCK\_STATE JslGetSimpleState(int deviceId)** - Get the latest button + trigger + stick state for the controller with the given id.
 
 **IMU\_STATE JslGetIMUState(int deviceId)** - Get the latest accelerometer + gyroscope state for the controller with the given id.
 
 **MOTION\_STATE JslGetMotionState(int deviceId)** - Get the latest motion state for the controller with the given id.
 
-**TOUCH\_STATE JslGetTouchState(int deviceId, bool previous = false)** - Get the latest or previous touchpad state for the controller with the given id. Only DualShock 4s and DualSense support this.
+**TOUCH\_STATE JslGetTouchState(int deviceId, bool previous = false)** - Get the latest or previous touchpad state for the controller with the given id. Only DualShock 4 and DualSense support this.
 
 **bool JslGetTouchpadDimension(int deviceId, int &sizeX, int &sizeY)** - Get the dimension of the touchpad. This is useful to abstract the resolution of different touchpads.
 
