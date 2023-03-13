@@ -60,6 +60,18 @@ float clamp(float a, float min, float max) {
 	}
 }
 
+uint16_t clamp(uint16_t a, uint16_t min, uint16_t max) {
+	if (a < min) {
+		return min;
+	}
+	else if (a > max) {
+		return max;
+	}
+	else {
+		return a;
+	}
+}
+
 unsigned createMask(unsigned a, unsigned b) {
 	unsigned r = 0;
 	for (unsigned i = a; i <= b; i++)

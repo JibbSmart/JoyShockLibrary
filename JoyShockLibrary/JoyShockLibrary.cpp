@@ -142,7 +142,7 @@ void pollIndividualLoop(JoyShock *jc) {
 				{
 					if (jc->is_usb)
 					{
-						printf("Attempting to re-initialise controller %d\n", jc->handle);
+						printf("Attempting to re-initialise controller %d\n", jc->intHandle);
 						if (jc->init_usb())
 						{
 							numTimeOuts = 0;
@@ -150,7 +150,7 @@ void pollIndividualLoop(JoyShock *jc) {
 					}
 					else
 					{
-						printf("Attempting to re-initialise controller %d\n", jc->handle);
+						printf("Attempting to re-initialise controller %d\n", jc->intHandle);
 						if (jc->init_bt())
 						{
 							numTimeOuts = 0;
@@ -251,10 +251,6 @@ int JslConnectDevices()
 	freopen("CONOUT$", "w", stdout);
 
 	// most of the joycon and pro controller stuff here is thanks to mfosse's vjoy feeder
-	int read;	// number of bytes read
-	int written;// number of bytes written
-	const char *device_name;
-
 	// Enumerate and print the HID devices on the system
 	struct hid_device_info *devs, *cur_dev;
 
@@ -364,7 +360,7 @@ int JslConnectDevices()
 				else if (currentJc->is_usb) {
 					currentJc->deinit_usb();
 				}
-				printf("\ending old thread\n");
+				printf("\tending old thread\n");
 				std::thread* thread = currentJc->thread;
 				currentJc->delete_on_finish = true;
 				currentJc->remove_on_finish = false;
@@ -451,7 +447,7 @@ int JslConnectDevices()
 		}
 	}
 
-	const int totalDevices = _joyshocks.size();
+	const int totalDevices = (int)_joyshocks.size();
 
 	_connectedLock.unlock_shared();
 
@@ -774,15 +770,15 @@ float JslGetStickStep(int deviceId)
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
 		if (jc->controller_type != ControllerType::n_switch) {
-			return 1.0 / 128.0;
+			return 1.0f / 128.0;
 		}
 		else {
 			if (jc->left_right == 2) // right joycon has no calibration for left stick
 			{
-				return 1.0 / (jc->stick_cal_x_r[2] - jc->stick_cal_x_r[1]);
+				return 1.0f / (jc->stick_cal_x_r[2] - jc->stick_cal_x_r[1]);
 			}
 			else {
-				return 1.0 / (jc->stick_cal_x_l[2] - jc->stick_cal_x_l[1]);
+				return 1.0f / (jc->stick_cal_x_l[2] - jc->stick_cal_x_l[1]);
 			}
 		}
 	}
@@ -792,7 +788,7 @@ float JslGetTriggerStep(int deviceId)
 {
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
-		return jc->controller_type != ControllerType::n_switch ? 1 / 256.0 : 1.0;
+		return jc->controller_type != ControllerType::n_switch ? 1 / 256.0f : 1.0f;
 	}
 	return 1.0f;
 }
@@ -800,7 +796,7 @@ float JslGetPollRate(int deviceId)
 {
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
-		return jc->controller_type != ControllerType::n_switch ? 250.0 : 66.6667;
+		return jc->controller_type != ControllerType::n_switch ? 250.0f : 66.6667f;
 	}
 	return 0.0f;
 }

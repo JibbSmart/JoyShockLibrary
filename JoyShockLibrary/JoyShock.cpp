@@ -1387,7 +1387,7 @@ public:
 	}
 
 	// SPI (@CTCaer):
-	bool get_spi_data(uint32_t offset, const uint16_t read_len, uint8_t *test_buf) {
+	bool get_spi_data(uint32_t offset, const uint8_t read_len, uint8_t *test_buf) {
 		int res;
 		uint8_t buf[0x100];
 		while (1) {
@@ -1432,7 +1432,7 @@ public:
 		return true;
 	}
 
-	int write_spi_data(uint32_t offset, const uint16_t write_len, uint8_t* test_buf) {
+	int write_spi_data(uint32_t offset, const uint8_t write_len, uint8_t* test_buf) {
 		int res;
 		uint8_t buf[0x100];
 		int error_writing = 0;
