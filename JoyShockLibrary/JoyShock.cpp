@@ -324,11 +324,6 @@ public:
             }
 
         }
-
-		if (this->handle == nullptr) {
-			//printf("Could not open serial %ls: %s\n", this->serial, strerror(errno));
-			throw;
-		}
 	}
 
 	JoyShock(struct hid_device_info* dev, hid_device* inHandle, int uniqueHandle, const std::string& inPath) {

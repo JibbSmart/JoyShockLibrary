@@ -248,7 +248,7 @@ void pollIndividualLoop(JoyShock *jc) {
 int JslConnectDevices()
 {
 	// for writing to console:
-	freopen("CONOUT$", "w", stdout);
+	//freopen("CONOUT$", "w", stdout);
 
 	// most of the joycon and pro controller stuff here is thanks to mfosse's vjoy feeder
 	// Enumerate and print the HID devices on the system
@@ -419,26 +419,29 @@ int JslConnectDevices()
 
 	// set lights:
 	//printf("setting LEDs...\n");
-	int i = 0;
+	int switchIndex = 1;
+	int dualSenseIndex = 1;
 	for (std::pair<int, JoyShock*> pair : _joyshocks)
 	{
 		JoyShock *jc = pair.second;
-		if (jc->controller_type != ControllerType::n_switch) {
-			// don't do joycon LED stuff with DS4
-			continue;
+
+		// restore colours if we have them set for this controller
+		switch (jc->controller_type)
+		{
+		case ControllerType::s_ds4:
+			jc->set_ds4_rumble_light(0, 0, jc->led_r, jc->led_g, jc->led_b);
+			break;
+		case ControllerType::s_ds:
+			jc->set_ds5_rumble_light(0, 0, jc->led_r, jc->led_g, jc->led_b, dualSenseIndex++);
+			break;
+		case ControllerType::n_switch:
+			jc->player_number = switchIndex++;
+			memset(buf, 0x00, 0x40);
+			buf[0] = (unsigned char)jc->player_number;
+			jc->send_subcommand(0x01, 0x30, buf, 1);
+			break;
 		}
 
-		// player LED
-		memset(buf, 0x00, 0x40);
-		buf[0] = (unsigned char)(i+1);
-		jc->send_subcommand(0x01, 0x30, buf, 1);
-		i++;
-	}
-
-	// now let's get polling!
-	for (std::pair<int, JoyShock*> pair : _joyshocks)
-	{
-		JoyShock* jc = pair.second;
 		// threads for polling
 		if (jc->thread == nullptr)
 		{
@@ -936,7 +939,7 @@ void JslSetRumble(int deviceId, int smallRumble, int bigRumble)
 			jc->led_g,
 			jc->led_b);
 	}
-    else if (jc != nullptr && jc->controller_type == ControllerType::s_ds4) {
+    else if (jc != nullptr && jc->controller_type == ControllerType::s_ds) {
         jc->small_rumble = smallRumble;
         jc->big_rumble = bigRumble;
         jc->set_ds5_rumble_light(
