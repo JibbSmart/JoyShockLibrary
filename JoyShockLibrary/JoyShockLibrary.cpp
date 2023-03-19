@@ -165,6 +165,8 @@ void pollIndividualLoop(JoyShock *jc) {
 			// we want to be able to do these check-and-calls without fear of interruption by another thread. there could be many threads (as many as connected controllers),
 			// and the callback could be time-consuming (up to the user), so we use a readers-writer-lock.
 			if (handle_input(jc, buf, 64, hasIMU)) { // but the user won't necessarily have a callback at all, so we'll skip the lock altogether in that case
+				// accumulate gyro
+				jc->push_cumulative_gyro(jc->imu_state.gyroX, jc->imu_state.gyroY, jc->imu_state.gyroZ);
 				if (_pollCallback != nullptr || _pollTouchCallback != nullptr)
 				{
 					_callbackLock.lock_shared();
@@ -684,6 +686,15 @@ float JslGetGyroZ(int deviceId)
 		return jc->imu_state.gyroZ;
 	}
 	return 0.0f;
+}
+
+void JslGetAndFlushAccumulatedGyro(int deviceId, float& gyroX, float& gyroY, float& gyroZ)
+{
+	JoyShock* jc = GetJoyShockFromHandle(deviceId);
+	if (jc != nullptr) {
+		return jc->get_and_flush_cumulative_gyro(gyroX, gyroY, gyroZ);
+	}
+	gyroX = gyroY = gyroZ = 0.f;
 }
 
 // get accelerometor

@@ -170,6 +170,9 @@ extern "C" JOY_SHOCK_API float JslGetGyroX(int deviceId);
 extern "C" JOY_SHOCK_API float JslGetGyroY(int deviceId);
 extern "C" JOY_SHOCK_API float JslGetGyroZ(int deviceId);
 
+// get accumulated average gyro since this function was last called or last flushed values
+extern "C" JOY_SHOCK_API void JslGetAndFlushAccumulatedGyro(int deviceId, float& gyroX, float& gyroY, float& gyroZ);
+
 // get accelerometor
 extern "C" JOY_SHOCK_API float JslGetAccelX(int deviceId);
 extern "C" JOY_SHOCK_API float JslGetAccelY(int deviceId);

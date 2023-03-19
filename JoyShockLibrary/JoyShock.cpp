@@ -74,6 +74,13 @@ public:
 
 	GamepadMotion motion;
 
+	float cumulative_gyro_x = 0.f;
+	float cumulative_gyro_y = 0.f;
+	float cumulative_gyro_z = 0.f;
+	int num_cumulative_gyro_samples = 0;
+
+	std::mutex cumulative_gyro_lock;
+
 	int8_t dstick;
 	uint8_t battery;
 
@@ -337,6 +344,40 @@ public:
 		if (handle != nullptr) {
 			hid_close(handle);
 		}
+	}
+
+	void push_cumulative_gyro(float gyroX, float gyroY, float gyroZ) {
+		cumulative_gyro_lock.lock();
+		if (num_cumulative_gyro_samples == 0) {
+			cumulative_gyro_x = 0.f;
+			cumulative_gyro_y = 0.f;
+			cumulative_gyro_z = 0.f;
+		}
+		cumulative_gyro_x += gyroX;
+		cumulative_gyro_y += gyroY;
+		cumulative_gyro_z += gyroZ;
+		num_cumulative_gyro_samples++;
+		cumulative_gyro_lock.unlock();
+	}
+
+	void get_and_flush_cumulative_gyro(float& gyroX, float& gyroY, float& gyroZ) {
+		cumulative_gyro_lock.lock();
+		if (num_cumulative_gyro_samples == 0) {
+			gyroX = cumulative_gyro_x;
+			gyroX = cumulative_gyro_y;
+			gyroX = cumulative_gyro_z;
+		}
+		else {
+			gyroX = cumulative_gyro_x / num_cumulative_gyro_samples;
+			gyroY = cumulative_gyro_y / num_cumulative_gyro_samples;
+			gyroZ = cumulative_gyro_z / num_cumulative_gyro_samples;
+			num_cumulative_gyro_samples = 0;
+			// so that we don't return zeroes before we receive a new sample, store this for next time:
+			cumulative_gyro_x = gyroX;
+			cumulative_gyro_y = gyroY;
+			cumulative_gyro_z = gyroZ;
+		}
+		cumulative_gyro_lock.unlock();
 	}
 
 	void reset_continuous_calibration() {
