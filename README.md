@@ -60,7 +60,7 @@ The latest version of JoyShockLibrary can always be found [here](https://github.
 #### Tip
 Quaternions are useful if you want to try and represent the device's 3D orientation in-game, with one major limitation: "yaw drift". Small errors will accumulate over time so that the quaternion orientation no longer matches the controller's real orientation. The gravity direction is used to counter this error in the roll and pitch axes, but there's nothing for countering the error in the yaw axis.
 
-Quaternions are **not** recommended for mouse-like aiming or cursor control. The gravity correction applied to the quaternion is not useful for these cases, and only introduces more error. For these, it's much better to use the calibrated gyro angular velocities.
+Quaternions are **not** recommended for mouse-like aiming or cursor control. The gravity correction applied to the quaternion is not useful for these cases, and only introduces more error. For these, it's much better to use the calibrated gyro angular velocities. To make sure you account for every motion sensor update, either set a callback where you can respond to new motion input as it comes in, or poll the controller using **JslGetAndFlushAccumulatedGyro** to get a good average angular velocity since you last called this function.
 
 ### Functions
 
@@ -91,6 +91,8 @@ All these functions *should* be thread-safe, and none of them should cause any h
 **float JslGetLeftTrigger/JslGetRightTrigger(int deviceId)** - Get the latest trigger state for the controller with the given id. If you want more than just a single trigger, it's more efficient to use JslGetSimpleState.
 
 **float JslGetGyroX/JslGetGyroY/JslGetGyroZ(int deviceId)** - Get the latest angular velocity for a given gyroscope axis. If you want more than just a single gyroscope axis velocity, it's more efficient to use JslGetIMUState.
+
+**void JslGetAndFlushAccumulatedGyro(int deviceId, float& gyroX, float& gyroY, float& gyroZ)** - Get gyro input that has accumulated since you last called this function on the device with the given id. This is an average angular velocity. Highly recommended if you're polling controllers instead of using the callbacks (_JslSetCallback_) to get new gyro data the moment it is received, to give a better account of how the controller has been turned since you last polled it. If no new motion data has come in since you last called it, it will repeat the same values, to avoid stuttery motion input when your game's framerate is higher than the controller's reporting rate (common with Switch controllers on high end PCs, for example).
 
 **float JslGetAccelX/JslGetAccelY/JslGetAccelZ(int deviceId)** - Get the latest acceleration for a given axis. If you want more than just a accelerometer axis, it's more efficient to use JslGetIMUState.
 
