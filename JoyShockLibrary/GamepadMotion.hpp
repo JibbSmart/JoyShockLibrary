@@ -1,6 +1,6 @@
 // Copyright (c) 2020-2023 Julian "Jibb" Smart
 // Released under the MIT license. See https://github.com/JibbSmart/GamepadMotionHelpers/blob/main/LICENSE for more info
-// Version 7
+// Version 8
 
 #pragma once
 
@@ -234,7 +234,9 @@ public:
 	void GetProcessedAcceleration(float& x, float& y, float& z);
 	void GetOrientation(float& w, float& x, float& y, float& z);
 	void GetPlayerSpaceGyro(float& x, float& y, const float yawRelaxFactor = 1.41f);
+	static void CalculatePlayerSpaceGyro(float& x, float& y, const float gyroX, const float gyroY, const float gyroZ, const float gravX, const float gravY, const float gravZ, const float yawRelaxFactor = 1.41f);
 	void GetWorldSpaceGyro(float& x, float& y, const float sideReductionThreshold = 0.125f);
+	static void CalculateWorldSpaceGyro(float& x, float& y, const float gyroX, const float gyroY, const float gyroZ, const float gravX, const float gravY, const float gravZ, const float sideReductionThreshold = 0.125f);
 
 	// gyro calibration functions
 	void StartContinuousCalibration();
@@ -1118,22 +1120,32 @@ inline void GamepadMotion::GetOrientation(float& w, float& x, float& y, float& z
 
 inline void GamepadMotion::GetPlayerSpaceGyro(float& x, float& y, const float yawRelaxFactor)
 {
+	CalculatePlayerSpaceGyro(x, y, Gyro.x, Gyro.y, Gyro.z, Motion.Grav.x, Motion.Grav.y, Motion.Grav.z, yawRelaxFactor);
+}
+
+inline void GamepadMotion::CalculatePlayerSpaceGyro(float& x, float& y, const float gyroX, const float gyroY, const float gyroZ, const float gravX, const float gravY, const float gravZ, const float yawRelaxFactor)
+{
 	// take gravity into account without taking on any error from gravity. Explained in depth at http://gyrowiki.jibbsmart.com/blog:player-space-gyro-and-alternatives-explained#toc7
-	const float worldYaw = -(Motion.Grav.y * Gyro.y + Motion.Grav.z * Gyro.z);
+	const float worldYaw = -(gravY * gyroY + gravZ * gyroZ);
 	const float worldYawSign = worldYaw < 0.f ? -1.f : 1.f;
-	y = worldYawSign * std::min(std::abs(worldYaw) * yawRelaxFactor, sqrtf(Gyro.y * Gyro.y + Gyro.z * Gyro.z));
-	x = Gyro.x;
+	y = worldYawSign * std::min(std::abs(worldYaw) * yawRelaxFactor, sqrtf(gyroY * gyroY + gyroZ * gyroZ));
+	x = gyroX;
 }
 
 inline void GamepadMotion::GetWorldSpaceGyro(float& x, float& y, const float sideReductionThreshold)
 {
+	CalculateWorldSpaceGyro(x, y, Gyro.x, Gyro.y, Gyro.z, Motion.Grav.x, Motion.Grav.y, Motion.Grav.z, sideReductionThreshold);
+}
+
+inline void GamepadMotion::CalculateWorldSpaceGyro(float& x, float& y, const float gyroX, const float gyroY, const float gyroZ, const float gravX, const float gravY, const float gravZ, const float sideReductionThreshold)
+{
 	// use the gravity direction as the yaw axis, and derive an appropriate pitch axis. Explained in depth at http://gyrowiki.jibbsmart.com/blog:player-space-gyro-and-alternatives-explained#toc6
-	const float worldYaw = -Motion.Grav.Dot(Gyro);
+	const float worldYaw = -gravX * gyroX - gravY * gyroY - gravZ * gyroZ;
 	// project local pitch axis (X) onto gravity plane
-	const float gravDotPitchAxis = Motion.Grav.x;
-	GamepadMotionHelpers::Vec pitchAxis(1.f - Motion.Grav.x * gravDotPitchAxis,
-		-Motion.Grav.y * gravDotPitchAxis,
-		-Motion.Grav.z * gravDotPitchAxis);
+	const float gravDotPitchAxis = gravX;
+	GamepadMotionHelpers::Vec pitchAxis(1.f - gravX * gravDotPitchAxis,
+		-gravY * gravDotPitchAxis,
+		-gravZ * gravDotPitchAxis);
 	// normalize
 	const float pitchAxisLengthSquared = pitchAxis.LengthSquared();
 	if (pitchAxisLengthSquared > 0.f)
@@ -1142,11 +1154,11 @@ inline void GamepadMotion::GetWorldSpaceGyro(float& x, float& y, const float sid
 		const float lengthReciprocal = 1.f / pitchAxisLength;
 		pitchAxis *= lengthReciprocal;
 
-		const float flatness = std::abs(Motion.Grav.y);
-		const float upness = std::abs(Motion.Grav.z);
+		const float flatness = std::abs(gravY);
+		const float upness = std::abs(gravZ);
 		const float sideReduction = sideReductionThreshold <= 0.f ? 1.f : std::clamp((std::max(flatness, upness) - sideReductionThreshold) / sideReductionThreshold, 0.f, 1.f);
 
-		x = sideReduction * pitchAxis.Dot(Gyro);
+		x = sideReduction * pitchAxis.Dot(GamepadMotionHelpers::Vec(gyroX, gyroY, gyroZ));
 	}
 	else
 	{

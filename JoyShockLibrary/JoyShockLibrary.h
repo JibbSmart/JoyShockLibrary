@@ -173,6 +173,12 @@ extern "C" JOY_SHOCK_API float JslGetGyroZ(int deviceId);
 // get accumulated average gyro since this function was last called or last flushed values
 extern "C" JOY_SHOCK_API void JslGetAndFlushAccumulatedGyro(int deviceId, float& gyroX, float& gyroY, float& gyroZ);
 
+// set gyro space. JslGetGyro*, JslGetAndFlushAccumulatedGyro, JslGetIMUState, and the IMU_STATEs reported in the callback functions will use one of 3 transformations:
+// 0 = local space -> no transformation is done on gyro input
+// 1 = world space -> gyro input is transformed based on the calculated gravity direction to account for the player's preferred controller orientation
+// 2 = player space -> a simple combination of local and world space that is as adaptive as world space but is as robust as local space
+extern "C" JOY_SHOCK_API void JslSetGyroSpace(int deviceId, int gyroSpace);
+
 // get accelerometor
 extern "C" JOY_SHOCK_API float JslGetAccelX(int deviceId);
 extern "C" JOY_SHOCK_API float JslGetAccelY(int deviceId);

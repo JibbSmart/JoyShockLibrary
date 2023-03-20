@@ -79,6 +79,8 @@ public:
 	float cumulative_gyro_z = 0.f;
 	int num_cumulative_gyro_samples = 0;
 
+	int gyroSpace = 0;
+
 	std::mutex modifying_lock;
 
 	int8_t dstick;
@@ -377,6 +379,22 @@ public:
 			cumulative_gyro_y = gyroY;
 			cumulative_gyro_z = gyroZ;
 		}
+		float gravX, gravY, gravZ;
+		motion.GetGravity(gravX, gravY, gravZ);
+		switch (gyroSpace)
+		{
+		default:
+		case 0:
+			break;
+		case 1:
+			GamepadMotion::CalculateWorldSpaceGyro(gyroX, gyroY, gyroX, gyroY, gyroZ, gravX, gravY, gravZ);
+			gyroZ = 0.f;
+			break;
+		case 2:
+			GamepadMotion::CalculatePlayerSpaceGyro(gyroX, gyroY, gyroX, gyroY, gyroZ, gravX, gravY, gravZ);
+			gyroZ = 0.f;
+			break;
+		}
 		modifying_lock.unlock();
 	}
 
@@ -401,13 +419,46 @@ public:
 
 	MOTION_STATE get_motion_state()
 	{
-		modifying_lock.lock();
 		MOTION_STATE motionState = MOTION_STATE();
+		modifying_lock.lock();
 		motion.GetProcessedAcceleration(motionState.accelX, motionState.accelY, motionState.accelZ);
 		motion.GetOrientation(motionState.quatW, motionState.quatX, motionState.quatY, motionState.quatZ);
 		motion.GetGravity(motionState.gravX, motionState.gravY, motionState.gravZ);
 		modifying_lock.unlock();
 		return motionState;
+	}
+
+	IMU_STATE get_transformed_imu_state(IMU_STATE& imu_state)
+	{
+		float gyroX, gyroY, gyroZ, gravX, gravY, gravZ;
+		modifying_lock.lock();
+		motion.GetGravity(gravX, gravY, gravZ);
+		gyroX = imu_state.gyroX;
+		gyroY = imu_state.gyroY;
+		gyroZ = imu_state.gyroZ;
+		modifying_lock.unlock();
+		switch (gyroSpace)
+		{
+		default:
+		case 0:
+			break;
+		case 1:
+			GamepadMotion::CalculateWorldSpaceGyro(gyroX, gyroY, gyroX, gyroY, gyroZ, gravX, gravY, gravZ);
+			gyroZ = 0.f;
+			break;
+		case 2:
+			GamepadMotion::CalculatePlayerSpaceGyro(gyroX, gyroY, gyroX, gyroY, gyroZ, gravX, gravY, gravZ);
+			gyroZ = 0.f;
+			break;
+		}
+		IMU_STATE transformedState = IMU_STATE();
+		transformedState.accelX = imu_state.accelX;
+		transformedState.accelY = imu_state.accelY;
+		transformedState.accelZ = imu_state.accelZ;
+		transformedState.gyroX = gyroX;
+		transformedState.gyroY = gyroY;
+		transformedState.gyroZ = gyroZ;
+		return transformedState;
 	}
 
 	bool hid_exchange(hid_device *handle, unsigned char *buf, int len) {

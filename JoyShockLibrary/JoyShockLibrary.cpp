@@ -169,7 +169,7 @@ void pollIndividualLoop(JoyShock *jc) {
 				{
 					_callbackLock.lock_shared();
 					if (_pollCallback != nullptr) {
-						_pollCallback(jc->intHandle, jc->simple_state, jc->last_simple_state, jc->imu_state, jc->last_imu_state, jc->delta_time);
+						_pollCallback(jc->intHandle, jc->simple_state, jc->last_simple_state, jc->get_transformed_imu_state(jc->imu_state), jc->get_transformed_imu_state(jc->last_imu_state), jc->delta_time);
 					}
 					// touchpad will have its own callback so that it doesn't change the existing api
 					if (jc->controller_type != ControllerType::n_switch && _pollTouchCallback != nullptr) {
@@ -558,7 +558,7 @@ IMU_STATE JslGetIMUState(int deviceId)
 	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
-		return jc->imu_state;
+		return jc->get_transformed_imu_state(jc->imu_state);
 	}
 	return {};
 }
@@ -679,7 +679,7 @@ float JslGetGyroX(int deviceId)
 	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
-		return jc->imu_state.gyroX;
+		return jc->get_transformed_imu_state(jc->imu_state).gyroX;
 	}
 	return 0.0f;
 }
@@ -688,7 +688,7 @@ float JslGetGyroY(int deviceId)
 	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
-		return jc->imu_state.gyroY;
+		return jc->get_transformed_imu_state(jc->imu_state).gyroY;
 	}
 	return 0.0f;
 }
@@ -697,7 +697,7 @@ float JslGetGyroZ(int deviceId)
 	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
-		return jc->imu_state.gyroZ;
+		return jc->get_transformed_imu_state(jc->imu_state).gyroZ;
 	}
 	return 0.0f;
 }
@@ -707,9 +707,27 @@ void JslGetAndFlushAccumulatedGyro(int deviceId, float& gyroX, float& gyroY, flo
 	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
-		return jc->get_and_flush_cumulative_gyro(gyroX, gyroY, gyroZ);
+		jc->get_and_flush_cumulative_gyro(gyroX, gyroY, gyroZ);
+		return;
 	}
 	gyroX = gyroY = gyroZ = 0.f;
+}
+
+void JslSetGyroSpace(int deviceId, int gyroSpace)
+{
+	if (gyroSpace < 0) {
+		gyroSpace = 0;
+	}
+	if (gyroSpace > 2) {
+		gyroSpace = 2;
+	}
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
+	JoyShock* jc = GetJoyShockFromHandle(deviceId);
+	if (jc != nullptr) {
+		jc->modifying_lock.lock();
+		jc->gyroSpace = gyroSpace;
+		jc->modifying_lock.unlock();
+	}
 }
 
 // get accelerometor
