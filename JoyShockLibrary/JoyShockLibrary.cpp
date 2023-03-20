@@ -43,17 +43,15 @@ static int GetUniqueHandle(const std::string &path)
 }
 
 // https://stackoverflow.com/questions/25144887/map-unordered-map-prefer-find-and-then-at-or-try-at-catch-out-of-range
+// not thread-safe -- because you probably want to do something with the object you get out of it, I've left locking to the caller
 static JoyShock* GetJoyShockFromHandle(int handle) {
-	_connectedLock.lock_shared();
 	auto iter = _joyshocks.find(handle);
 
 	if (iter != _joyshocks.end())
 	{
-		_connectedLock.unlock_shared();
 		return iter->second;
 		// iter is item pair in the map. The value will be accessible as `iter->second`.
 	}
-	_connectedLock.unlock_shared();
 	return nullptr;
 }
 
@@ -519,6 +517,7 @@ void JslDisconnectAndDisposeAll()
 
 bool JslStillConnected(int deviceId)
 {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	return GetJoyShockFromHandle(deviceId) != nullptr;
 }
 
@@ -547,6 +546,7 @@ bool JslStillConnected(int deviceId)
 // if you want the whole state, this is the best way to do it
 JOY_SHOCK_STATE JslGetSimpleState(int deviceId)
 {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
 		return jc->simple_state;
@@ -555,6 +555,7 @@ JOY_SHOCK_STATE JslGetSimpleState(int deviceId)
 }
 IMU_STATE JslGetIMUState(int deviceId)
 {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
 		return jc->imu_state;
@@ -563,6 +564,7 @@ IMU_STATE JslGetIMUState(int deviceId)
 }
 MOTION_STATE JslGetMotionState(int deviceId)
 {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
 		return jc->get_motion_state();
@@ -571,6 +573,7 @@ MOTION_STATE JslGetMotionState(int deviceId)
 }
 TOUCH_STATE JslGetTouchState(int deviceId, bool previous)
 {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
 		return previous ? jc->last_touch_state : jc->touch_state;
@@ -580,6 +583,7 @@ TOUCH_STATE JslGetTouchState(int deviceId, bool previous)
 
 bool JslGetTouchpadDimension(int deviceId, int &sizeX, int &sizeY)
 {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	// I am assuming a single touchpad (or all touchpads are the same dimension)?
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr)
@@ -603,6 +607,7 @@ bool JslGetTouchpadDimension(int deviceId, int &sizeX, int &sizeY)
 
 int JslGetButtons(int deviceId)
 {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
 		return jc->simple_state.buttons;
@@ -613,6 +618,7 @@ int JslGetButtons(int deviceId)
 // get thumbsticks
 float JslGetLeftX(int deviceId)
 {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
 		return jc->simple_state.stickLX;
@@ -621,6 +627,7 @@ float JslGetLeftX(int deviceId)
 }
 float JslGetLeftY(int deviceId)
 {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
 		return jc->simple_state.stickLY;
@@ -629,6 +636,7 @@ float JslGetLeftY(int deviceId)
 }
 float JslGetRightX(int deviceId)
 {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
 		return jc->simple_state.stickRX;
@@ -637,6 +645,7 @@ float JslGetRightX(int deviceId)
 }
 float JslGetRightY(int deviceId)
 {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
 		return jc->simple_state.stickRY;
@@ -647,6 +656,7 @@ float JslGetRightY(int deviceId)
 // get triggers. Switch controllers don't have analogue triggers, but will report 0.0 or 1.0 so they can be used in the same way as others
 float JslGetLeftTrigger(int deviceId)
 {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
 		return jc->simple_state.lTrigger;
@@ -655,6 +665,7 @@ float JslGetLeftTrigger(int deviceId)
 }
 float JslGetRightTrigger(int deviceId)
 {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
 		return jc->simple_state.rTrigger;
@@ -665,6 +676,7 @@ float JslGetRightTrigger(int deviceId)
 // get gyro
 float JslGetGyroX(int deviceId)
 {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
 		return jc->imu_state.gyroX;
@@ -673,6 +685,7 @@ float JslGetGyroX(int deviceId)
 }
 float JslGetGyroY(int deviceId)
 {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
 		return jc->imu_state.gyroY;
@@ -681,6 +694,7 @@ float JslGetGyroY(int deviceId)
 }
 float JslGetGyroZ(int deviceId)
 {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
 		return jc->imu_state.gyroZ;
@@ -690,6 +704,7 @@ float JslGetGyroZ(int deviceId)
 
 void JslGetAndFlushAccumulatedGyro(int deviceId, float& gyroX, float& gyroY, float& gyroZ)
 {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
 		return jc->get_and_flush_cumulative_gyro(gyroX, gyroY, gyroZ);
@@ -700,6 +715,7 @@ void JslGetAndFlushAccumulatedGyro(int deviceId, float& gyroX, float& gyroY, flo
 // get accelerometor
 float JslGetAccelX(int deviceId)
 {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
 		return jc->imu_state.accelX;
@@ -708,6 +724,7 @@ float JslGetAccelX(int deviceId)
 }
 float JslGetAccelY(int deviceId)
 {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
 		return jc->imu_state.accelY;
@@ -716,6 +733,7 @@ float JslGetAccelY(int deviceId)
 }
 float JslGetAccelZ(int deviceId)
 {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
 		return jc->imu_state.accelZ;
@@ -726,6 +744,7 @@ float JslGetAccelZ(int deviceId)
 // get touchpad
 int JslGetTouchId(int deviceId, bool secondTouch)
 {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
 		if (!secondTouch) {
@@ -739,6 +758,7 @@ int JslGetTouchId(int deviceId, bool secondTouch)
 }
 bool JslGetTouchDown(int deviceId, bool secondTouch)
 {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
 		if (!secondTouch) {
@@ -753,6 +773,7 @@ bool JslGetTouchDown(int deviceId, bool secondTouch)
 
 float JslGetTouchX(int deviceId, bool secondTouch)
 {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
 		if (!secondTouch) {
@@ -766,6 +787,7 @@ float JslGetTouchX(int deviceId, bool secondTouch)
 }
 float JslGetTouchY(int deviceId, bool secondTouch)
 {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
 		if (!secondTouch) {
@@ -781,6 +803,7 @@ float JslGetTouchY(int deviceId, bool secondTouch)
 // analog parameters have different resolutions depending on device
 float JslGetStickStep(int deviceId)
 {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
 		if (jc->controller_type != ControllerType::n_switch) {
@@ -800,6 +823,7 @@ float JslGetStickStep(int deviceId)
 }
 float JslGetTriggerStep(int deviceId)
 {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
 		return jc->controller_type != ControllerType::n_switch ? 1 / 256.0f : 1.0f;
@@ -808,6 +832,7 @@ float JslGetTriggerStep(int deviceId)
 }
 float JslGetPollRate(int deviceId)
 {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
 		return jc->controller_type != ControllerType::n_switch ? 250.0f : 66.6667f;
@@ -817,14 +842,14 @@ float JslGetPollRate(int deviceId)
 
 // calibration
 void JslResetContinuousCalibration(int deviceId) {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
-		// TODO: might need a lock around this to prevent race conditions.
-		// risk of miscounting samples
 		jc->reset_continuous_calibration();
 	}
 }
 void JslStartContinuousCalibration(int deviceId) {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
 		jc->use_continuous_calibration = true;
@@ -832,27 +857,38 @@ void JslStartContinuousCalibration(int deviceId) {
 	}
 }
 void JslPauseContinuousCalibration(int deviceId) {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
 		jc->use_continuous_calibration = false;
 	}
 }
 void JslSetAutomaticCalibration(int deviceId, bool enabled) {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
+		jc->modifying_lock.lock();
 		jc->motion.SetCalibrationMode(enabled ? GamepadMotionHelpers::CalibrationMode::SensorFusion | GamepadMotionHelpers::CalibrationMode::Stillness : GamepadMotionHelpers::CalibrationMode::Manual);
+		jc->modifying_lock.unlock();
 	}
 }
 void JslGetCalibrationOffset(int deviceId, float& xOffset, float& yOffset, float& zOffset) {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
+		// not technically modifying, but also not a simple getter
+		jc->modifying_lock.lock();
 		jc->motion.GetCalibrationOffset(xOffset, yOffset, zOffset);
+		jc->modifying_lock.unlock();
 	}
 }
 void JslSetCalibrationOffset(int deviceId, float xOffset, float yOffset, float zOffset) {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
+		jc->modifying_lock.lock();
 		jc->motion.SetCalibrationOffset(xOffset, yOffset, zOffset, 1);
+		jc->modifying_lock.unlock();
 	}
 }
 
@@ -874,6 +910,7 @@ void JslSetTouchCallback(void(*callback)(int, TOUCH_STATE, TOUCH_STATE, float)) 
 // what split type of controller is this?
 int JslGetControllerType(int deviceId)
 {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
 		switch (jc->controller_type)
@@ -892,6 +929,7 @@ int JslGetControllerType(int deviceId)
 // what split type of controller is this?
 int JslGetControllerSplitType(int deviceId)
 {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
 		return jc->left_right;
@@ -901,6 +939,7 @@ int JslGetControllerSplitType(int deviceId)
 // what colour is the controller (not all controllers support this; those that don't will report white)
 int JslGetControllerColour(int deviceId)
 {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	// this just reports body colour. Switch controllers also give buttons colour, and in Pro's case, left and right grips
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr) {
@@ -911,8 +950,10 @@ int JslGetControllerColour(int deviceId)
 // set controller light colour (not all controllers have a light whose colour can be set, but that just means nothing will be done when this is called -- no harm)
 void JslSetLightColour(int deviceId, int colour)
 {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr && jc->controller_type == ControllerType::s_ds4) {
+		jc->modifying_lock.lock();
 		jc->led_r = (colour >> 16) & 0xff;
 		jc->led_g = (colour >> 8) & 0xff;
 		jc->led_b = colour & 0xff;
@@ -922,8 +963,10 @@ void JslSetLightColour(int deviceId, int colour)
 			jc->led_r,
 			jc->led_g,
 			jc->led_b);
+		jc->modifying_lock.unlock();
 	}
 	else if(jc != nullptr && jc->controller_type == ControllerType::s_ds) {
+		jc->modifying_lock.lock();
         jc->led_r = (colour >> 16) & 0xff;
         jc->led_g = (colour >> 8) & 0xff;
         jc->led_b = colour & 0xff;
@@ -934,13 +977,16 @@ void JslSetLightColour(int deviceId, int colour)
                 jc->led_g,
                 jc->led_b,
                 jc->player_number);
+		jc->modifying_lock.unlock();
 	}
 }
 // set controller rumble
 void JslSetRumble(int deviceId, int smallRumble, int bigRumble)
 {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr && jc->controller_type == ControllerType::s_ds4) {
+		jc->modifying_lock.lock();
 		jc->small_rumble = smallRumble;
 		jc->big_rumble = bigRumble;
 		jc->set_ds4_rumble_light(
@@ -949,8 +995,10 @@ void JslSetRumble(int deviceId, int smallRumble, int bigRumble)
 			jc->led_r,
 			jc->led_g,
 			jc->led_b);
+		jc->modifying_lock.unlock();
 	}
     else if (jc != nullptr && jc->controller_type == ControllerType::s_ds) {
+		jc->modifying_lock.lock();
         jc->small_rumble = smallRumble;
         jc->big_rumble = bigRumble;
         jc->set_ds5_rumble_light(
@@ -960,20 +1008,25 @@ void JslSetRumble(int deviceId, int smallRumble, int bigRumble)
                 jc->led_g,
                 jc->led_b,
                 jc->player_number);
+		jc->modifying_lock.unlock();
     }
 }
 // set controller player number indicator (not all controllers have a number indicator which can be set, but that just means nothing will be done when this is called -- no harm)
 void JslSetPlayerNumber(int deviceId, int number)
 {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	JoyShock* jc = GetJoyShockFromHandle(deviceId);
 	if (jc != nullptr && jc->controller_type == ControllerType::n_switch) {
+		jc->modifying_lock.lock();
 		jc->player_number = number;
 		unsigned char buf[64];
 		memset(buf, 0x00, 0x40);
 		buf[0] = (unsigned char)number;
 		jc->send_subcommand(0x01, 0x30, buf, 1);
+		jc->modifying_lock.unlock();
 	}
 	else if(jc != nullptr && jc->controller_type == ControllerType::s_ds) {
+		jc->modifying_lock.lock();
 	    jc->player_number = number;
         jc->set_ds5_rumble_light(
                 jc->small_rumble,
@@ -982,5 +1035,6 @@ void JslSetPlayerNumber(int deviceId, int number)
                 jc->led_g,
                 jc->led_b,
                 jc->player_number);
+		jc->modifying_lock.unlock();
 	}
 }

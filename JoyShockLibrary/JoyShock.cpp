@@ -79,7 +79,7 @@ public:
 	float cumulative_gyro_z = 0.f;
 	int num_cumulative_gyro_samples = 0;
 
-	std::mutex cumulative_gyro_lock;
+	std::mutex modifying_lock;
 
 	int8_t dstick;
 	uint8_t battery;
@@ -347,7 +347,7 @@ public:
 	}
 
 	void push_cumulative_gyro(float gyroX, float gyroY, float gyroZ) {
-		cumulative_gyro_lock.lock();
+		modifying_lock.lock();
 		if (num_cumulative_gyro_samples == 0) {
 			cumulative_gyro_x = 0.f;
 			cumulative_gyro_y = 0.f;
@@ -357,11 +357,11 @@ public:
 		cumulative_gyro_y += gyroY;
 		cumulative_gyro_z += gyroZ;
 		num_cumulative_gyro_samples++;
-		cumulative_gyro_lock.unlock();
+		modifying_lock.unlock();
 	}
 
 	void get_and_flush_cumulative_gyro(float& gyroX, float& gyroY, float& gyroZ) {
-		cumulative_gyro_lock.lock();
+		modifying_lock.lock();
 		if (num_cumulative_gyro_samples == 0) {
 			gyroX = cumulative_gyro_x;
 			gyroX = cumulative_gyro_y;
@@ -377,28 +377,36 @@ public:
 			cumulative_gyro_y = gyroY;
 			cumulative_gyro_z = gyroZ;
 		}
-		cumulative_gyro_lock.unlock();
+		modifying_lock.unlock();
 	}
 
 	void reset_continuous_calibration() {
+		modifying_lock.lock();
 		motion.ResetContinuousCalibration();
+		modifying_lock.unlock();
 	}
 
 	void push_sensor_samples(float gyroX, float gyroY, float gyroZ, float accelX, float accelY, float accelZ, float deltaTime) {
+		modifying_lock.lock();
 		motion.ProcessMotion(gyroX, gyroY, gyroZ, accelX, accelY, accelZ, deltaTime);
+		modifying_lock.unlock();
 	}
 
 	void get_calibrated_gyro(float& gyroX, float& gyroY, float& gyroZ)
 	{
+		modifying_lock.lock();
 		motion.GetCalibratedGyro(gyroX, gyroY, gyroZ);
+		modifying_lock.unlock();
 	}
 
 	MOTION_STATE get_motion_state()
 	{
+		modifying_lock.lock();
 		MOTION_STATE motionState = MOTION_STATE();
 		motion.GetProcessedAcceleration(motionState.accelX, motionState.accelY, motionState.accelZ);
 		motion.GetOrientation(motionState.quatW, motionState.quatX, motionState.quatY, motionState.quatZ);
 		motion.GetGravity(motionState.gravX, motionState.gravY, motionState.gravZ);
+		modifying_lock.unlock();
 		return motionState;
 	}
 
