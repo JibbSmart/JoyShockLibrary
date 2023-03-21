@@ -167,7 +167,7 @@ void pollIndividualLoop(JoyShock *jc) {
 				jc->push_cumulative_gyro(jc->imu_state.gyroX, jc->imu_state.gyroY, jc->imu_state.gyroZ);
 				if (_pollCallback != nullptr || _pollTouchCallback != nullptr)
 				{
-					_callbackLock.lock_shared();
+					std::shared_lock<std::shared_timed_mutex> lock(_callbackLock);
 					if (_pollCallback != nullptr) {
 						_pollCallback(jc->intHandle, jc->simple_state, jc->last_simple_state, jc->get_transformed_imu_state(jc->imu_state), jc->get_transformed_imu_state(jc->last_imu_state), jc->delta_time);
 					}
@@ -175,7 +175,6 @@ void pollIndividualLoop(JoyShock *jc) {
 					if (jc->controller_type != ControllerType::n_switch && _pollTouchCallback != nullptr) {
 						_pollTouchCallback(jc->intHandle, jc->touch_state, jc->last_touch_state, jc->delta_time);
 					}
-					_callbackLock.unlock_shared();
 				}
 				// count how many have no IMU result. We want to periodically attempt to enable IMU if it's not present
 				if (!hasIMU)
