@@ -18,6 +18,8 @@ std::shared_timed_mutex _callbackLock;
 std::shared_timed_mutex _connectedLock;
 void(*_pollCallback)(int, JOY_SHOCK_STATE, JOY_SHOCK_STATE, IMU_STATE, IMU_STATE, float) = nullptr;
 void(*_pollTouchCallback)(int, TOUCH_STATE, TOUCH_STATE, float) = nullptr;
+void(*_connectCallback)(int) = nullptr;
+void(*_disconnectCallback)(int, bool) = nullptr;
 std::unordered_map<int, JoyShock*> _joyshocks;
 std::unordered_map<std::string, JoyShock*> _byPath;
 std::mutex _pathHandleLock;
@@ -231,6 +233,7 @@ void pollIndividualLoop(JoyShock *jc) {
 		}
 	}
 
+	const int intHandle = jc->intHandle;
 	// disconnect this device
 	if (jc->delete_on_finish)
 	{
@@ -242,6 +245,15 @@ void pollIndividualLoop(JoyShock *jc) {
 	{
 		_connectedLock.unlock();
 	}
+
+	// notify that we disconnected this device, and say whether or not it was a timeout (if not a timeout, then an explicit disconnect)
+	{
+		std::shared_lock<std::shared_timed_mutex> lock(_callbackLock);
+		if (_disconnectCallback != nullptr)
+		{
+			_disconnectCallback(intHandle, numTimeOuts >= 10);
+		}
+	}
 }
 
 int JslConnectDevices()
@@ -252,6 +264,8 @@ int JslConnectDevices()
 	// most of the joycon and pro controller stuff here is thanks to mfosse's vjoy feeder
 	// Enumerate and print the HID devices on the system
 	struct hid_device_info *devs, *cur_dev;
+
+	std::vector<int> createdIds;
 
 	_connectedLock.lock();
 
@@ -339,6 +353,7 @@ int JslConnectDevices()
 				JoyShock* jc = new JoyShock(cur_dev, handle, GetUniqueHandle(path), path);
 				_joyshocks.emplace(jc->intHandle, jc);
 				_byPath.emplace(path, jc);
+				createdIds.push_back(jc->intHandle);
 			}
 
 			if (currentJc != nullptr)
@@ -373,9 +388,6 @@ int JslConnectDevices()
 		cur_dev = cur_dev->next;
 	}
 	hid_free_enumeration(devs);
-
-	_connectedLock.unlock();
-	_connectedLock.lock_shared();
 
 	// init joyshocks:
 	for (std::pair<int, JoyShock*> pair : _joyshocks)
@@ -451,7 +463,19 @@ int JslConnectDevices()
 
 	const int totalDevices = (int)_joyshocks.size();
 
-	_connectedLock.unlock_shared();
+	_connectedLock.unlock();
+
+	// notify that we created the new object (now that we're not in a lock that might prevent reading data)
+	{
+		std::shared_lock<std::shared_timed_mutex> lock(_callbackLock);
+		if (_connectCallback != nullptr)
+		{
+			for (int newConnectionHandle : createdIds)
+			{
+				_connectCallback(newConnectionHandle);
+			}
+		}
+	}
 
 	return totalDevices;
 }
@@ -921,6 +945,22 @@ void JslSetCallback(void(*callback)(int, JOY_SHOCK_STATE, JOY_SHOCK_STATE, IMU_S
 void JslSetTouchCallback(void(*callback)(int, TOUCH_STATE, TOUCH_STATE, float)) {
 	_callbackLock.lock();
 	_pollTouchCallback = callback;
+	_callbackLock.unlock();
+}
+
+// this function will get called for each device when it is newly connected
+void JslSetConnectCallback(void(*callback)(int)) {
+	// exclusive lock
+	_callbackLock.lock();
+	_connectCallback = callback;
+	_callbackLock.unlock();
+}
+
+// this function will get called for each device when it is disconnected (and whether it was a timeout (true))
+void JslSetDisconnectCallback(void(*callback)(int, bool)) {
+	// exclusive lock
+	_callbackLock.lock();
+	_disconnectCallback = callback;
 	_callbackLock.unlock();
 }
 

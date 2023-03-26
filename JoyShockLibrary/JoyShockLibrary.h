@@ -208,6 +208,10 @@ extern "C" JOY_SHOCK_API void JslSetCalibrationOffset(int deviceId, float xOffse
 extern "C" JOY_SHOCK_API void JslSetCallback(void(*callback)(int, JOY_SHOCK_STATE, JOY_SHOCK_STATE, IMU_STATE, IMU_STATE, float));
 // this function will get called for each input event, even if touch data didn't update
 extern "C" JOY_SHOCK_API void JslSetTouchCallback(void(*callback)(int, TOUCH_STATE, TOUCH_STATE, float));
+// this function will get called for each device when it is newly connected
+extern "C" JOY_SHOCK_API void JslSetConnectCallback(void(*callback)(int));
+// this function will get called for each device when it is disconnected
+extern "C" JOY_SHOCK_API void JslSetDisonnectCallback(void(*callback)(int, bool));
 
 // what kind of controller is this?
 extern "C" JOY_SHOCK_API int JslGetControllerType(int deviceId);
