@@ -16,6 +16,7 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 	jc->last_simple_state = jc->simple_state;
 	jc->simple_state.buttons = 0;
 	jc->last_imu_state = jc->imu_state;
+	IMU_STATE imu_state;
 	// delta time
 	auto time_now = std::chrono::steady_clock::now();
 	jc->delta_time = (float)(std::chrono::duration_cast<std::chrono::microseconds>(time_now - jc->last_polled).count() / 1000000.0);
@@ -67,15 +68,15 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 			}
 
 			// convert to real units
-			jc->imu_state.gyroX = (float)(gyroSampleX) * (2000.0f / 32767.0f);
-			jc->imu_state.gyroY = (float)(gyroSampleY) * (2000.0f / 32767.0f);
-			jc->imu_state.gyroZ = (float)(gyroSampleZ) * (2000.0f / 32767.0f);
+			imu_state.gyroX = (float)(gyroSampleX) * (2000.0f / 32767.0f);
+			imu_state.gyroY = (float)(gyroSampleY) * (2000.0f / 32767.0f);
+			imu_state.gyroZ = (float)(gyroSampleZ) * (2000.0f / 32767.0f);
 
-			jc->imu_state.accelX = (float)(accelSampleX) / 8192.0f;
-			jc->imu_state.accelY = (float)(accelSampleY) / 8192.0f;
-			jc->imu_state.accelZ = (float)(accelSampleZ) / 8192.0f;
+			imu_state.accelX = (float)(accelSampleX) / 8192.0f;
+			imu_state.accelY = (float)(accelSampleY) / 8192.0f;
+			imu_state.accelZ = (float)(accelSampleZ) / 8192.0f;
 
-			//printf("DS4 accel: %.4f, %.4f, %.4f\n", jc->imu_state.accelX, jc->imu_state.accelY, jc->imu_state.accelZ);
+			//printf("DS4 accel: %.4f, %.4f, %.4f\n", imu_state.accelX, imu_state.accelY, imu_state.accelZ);
 
 			//printf("%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%d\n",
 			//	jc->gyro.yaw, jc->gyro.pitch, jc->gyro.roll, jc->accel.x, jc->accel.y, jc->accel.z, universal_counter++);
@@ -139,10 +140,14 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 			jc->simple_state.stickRX = (std::fmin)(1.0f, (stick2_x - 127.0f) / 127.0f);
 			jc->simple_state.stickRY = (std::fmin)(1.0f, (stick2_y - 127.0f) / 127.0f);
 
-			jc->push_sensor_samples(jc->imu_state.gyroX, jc->imu_state.gyroY, jc->imu_state.gyroZ,
-					jc->imu_state.accelX, jc->imu_state.accelY, jc->imu_state.accelZ, jc->delta_time);
+			jc->modifying_lock.lock();
+			jc->push_sensor_samples(imu_state.gyroX, imu_state.gyroY, imu_state.gyroZ,
+					imu_state.accelX, imu_state.accelY, imu_state.accelZ, jc->delta_time);
 
-			jc->get_calibrated_gyro(jc->imu_state.gyroX, jc->imu_state.gyroY, jc->imu_state.gyroZ);
+			jc->get_calibrated_gyro(imu_state.gyroX, imu_state.gyroY, imu_state.gyroZ);
+			jc->modifying_lock.unlock();
+
+			jc->imu_state = imu_state;
 		}
 
 		//printf("Buttons: %d LX: %.5f LY: %.5f RX: %.5f RY: %.5f GX: %.4f GY: %.4f GZ: %.4f\n", \
@@ -179,15 +184,15 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
         }
 
         // convert to real units
-        jc->imu_state.gyroX = (float) (gyroSampleX) * (2000.0f / 32767.0f);
-        jc->imu_state.gyroY = (float) (gyroSampleY) * (2000.0f / 32767.0f);
-        jc->imu_state.gyroZ = (float) (gyroSampleZ) * (2000.0f / 32767.0f);
+        imu_state.gyroX = (float) (gyroSampleX) * (2000.0f / 32767.0f);
+        imu_state.gyroY = (float) (gyroSampleY) * (2000.0f / 32767.0f);
+        imu_state.gyroZ = (float) (gyroSampleZ) * (2000.0f / 32767.0f);
 
-        jc->imu_state.accelX = (float) (accelSampleX) / 8192.0f;
-        jc->imu_state.accelY = (float) (accelSampleY) / 8192.0f;
-        jc->imu_state.accelZ = (float) (accelSampleZ) / 8192.0f;
+        imu_state.accelX = (float) (accelSampleX) / 8192.0f;
+        imu_state.accelY = (float) (accelSampleY) / 8192.0f;
+        imu_state.accelZ = (float) (accelSampleZ) / 8192.0f;
 
-        //printf("DS accel: %.4f, %.4f, %.4f\n", jc->imu_state.accelX, jc->imu_state.accelY, jc->imu_state.accelZ);
+        //printf("DS accel: %.4f, %.4f, %.4f\n", imu_state.accelX, imu_state.accelY, imu_state.accelZ);
 
         //printf("%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%d\n",
         //	jc->gyro.yaw, jc->gyro.pitch, jc->gyro.roll, jc->accel.x, jc->accel.y, jc->accel.z, universal_counter++);
@@ -255,10 +260,14 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 		jc->simple_state.stickRX = (std::fmin)(1.0f, (stick2_x - 127.0f) / 127.0f);
 		jc->simple_state.stickRY = (std::fmin)(1.0f, (stick2_y - 127.0f) / 127.0f);
 
-		jc->push_sensor_samples(jc->imu_state.gyroX, jc->imu_state.gyroY, jc->imu_state.gyroZ,
-				jc->imu_state.accelX, jc->imu_state.accelY, jc->imu_state.accelZ, jc->delta_time);
+		jc->modifying_lock.lock();
+		jc->push_sensor_samples(imu_state.gyroX, imu_state.gyroY, imu_state.gyroZ,
+				imu_state.accelX, imu_state.accelY, imu_state.accelZ, jc->delta_time);
 
-		jc->get_calibrated_gyro(jc->imu_state.gyroX, jc->imu_state.gyroY, jc->imu_state.gyroZ);
+		jc->get_calibrated_gyro(imu_state.gyroX, imu_state.gyroY, imu_state.gyroZ);
+		jc->modifying_lock.unlock();
+
+		jc->imu_state = imu_state;
 
 		return true;
 	}
@@ -440,19 +449,21 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 			totalGyroX /= 3;
 			totalGyroY /= 3;
 			totalGyroZ /= 3;
-			jc->imu_state.accelX = -accelX;
-			jc->imu_state.accelY = accelY;
-			jc->imu_state.accelZ = -accelZ;
-			jc->imu_state.gyroX = -totalGyroY;
-			jc->imu_state.gyroY = totalGyroZ;
-			jc->imu_state.gyroZ = totalGyroX;
+			imu_state.accelX = -accelX;
+			imu_state.accelY = accelY;
+			imu_state.accelZ = -accelZ;
+			imu_state.gyroX = -totalGyroY;
+			imu_state.gyroY = totalGyroZ;
+			imu_state.gyroZ = totalGyroX;
 
-			//printf("Switch accel: %.4f, %.4f, %.4f\n", jc->imu_state.accelX, jc->imu_state.accelY, jc->imu_state.accelZ);
+			//printf("Switch accel: %.4f, %.4f, %.4f\n", imu_state.accelX, imu_state.accelY, imu_state.accelZ);
 
-			jc->push_sensor_samples(jc->imu_state.gyroX, jc->imu_state.gyroY, jc->imu_state.gyroZ,
-					jc->imu_state.accelX, jc->imu_state.accelY, jc->imu_state.accelZ, jc->delta_time);
+			jc->modifying_lock.lock();
+			jc->push_sensor_samples(imu_state.gyroX, imu_state.gyroY, imu_state.gyroZ,
+					imu_state.accelX, imu_state.accelY, imu_state.accelZ, jc->delta_time);
 
-			jc->get_calibrated_gyro(jc->imu_state.gyroX, jc->imu_state.gyroY, jc->imu_state.gyroZ);
+			jc->get_calibrated_gyro(imu_state.gyroX, imu_state.gyroY, imu_state.gyroZ);
+			jc->modifying_lock.unlock();
 		}
 
 	}
@@ -475,7 +486,7 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 			jc->simple_state.buttons |= ((buttons_pressed >> 4) << JSOFFSET_SR) & JSMASK_SR;
 
 			// just need to negate gyroZ
-			jc->imu_state.gyroZ = -jc->imu_state.gyroZ;
+			imu_state.gyroZ = -imu_state.gyroZ;
 		}
 
 		// right:
@@ -494,12 +505,12 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 			jc->simple_state.buttons |= ((buttons_pressed >> 20) << JSOFFSET_SR) & JSMASK_SR;
 
 			// for some reason we need to negate x and y, and z on the right joycon
-			jc->imu_state.gyroX = -jc->imu_state.gyroX;
-			jc->imu_state.gyroY = -jc->imu_state.gyroY;
-			jc->imu_state.gyroZ = -jc->imu_state.gyroZ;
+			imu_state.gyroX = -imu_state.gyroX;
+			imu_state.gyroY = -imu_state.gyroY;
+			imu_state.gyroZ = -imu_state.gyroZ;
 
-			jc->imu_state.accelX = -jc->imu_state.accelX;
-			jc->imu_state.accelY = -jc->imu_state.accelY;
+			imu_state.accelX = -imu_state.accelX;
+			imu_state.accelY = -imu_state.accelY;
 
 		}
 
@@ -527,9 +538,10 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 			jc->simple_state.buttons |= ((int)(jc->simple_state.rTrigger) << JSOFFSET_ZR) & JSMASK_ZR;
 
 			// just need to negate gyroZ
-			jc->imu_state.gyroZ = -jc->imu_state.gyroZ;
+			imu_state.gyroZ = -imu_state.gyroZ;
 		}
 
+		jc->imu_state = imu_state;
 	}
 
 	return true;

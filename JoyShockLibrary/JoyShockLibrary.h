@@ -77,47 +77,58 @@
 #define DS5_PLAYER_5 31
 
 typedef struct JOY_SHOCK_STATE {
-	int buttons;
-	float lTrigger;
-	float rTrigger;
-	float stickLX;
-	float stickLY;
-	float stickRX;
-	float stickRY;
+	int buttons = 0;
+	float lTrigger = 0.f;
+	float rTrigger = 0.f;
+	float stickLX = 0.f;
+	float stickLY = 0.f;
+	float stickRX = 0.f;
+	float stickRY = 0.f;
 } JOY_SHOCK_STATE;
 
 typedef struct IMU_STATE {
-	float accelX;
-	float accelY;
-	float accelZ;
-	float gyroX;
-	float gyroY;
-	float gyroZ;
+	float accelX = 0.f;
+	float accelY = 0.f;
+	float accelZ = 0.f;
+	float gyroX = 0.f;
+	float gyroY = 0.f;
+	float gyroZ = 0.f;
 } IMU_STATE;
 
 typedef struct MOTION_STATE {
-	float quatW;
-	float quatX;
-	float quatY;
-	float quatZ;
-	float accelX;
-	float accelY;
-	float accelZ;
-	float gravX;
-	float gravY;
-	float gravZ;
+	float quatW = 0.f;
+	float quatX = 0.f;
+	float quatY = 0.f;
+	float quatZ = 0.f;
+	float accelX = 0.f;
+	float accelY = 0.f;
+	float accelZ = 0.f;
+	float gravX = 0.f;
+	float gravY = 0.f;
+	float gravZ = 0.f;
 } MOTION_STATE;
 
 typedef struct TOUCH_STATE {
-	int t0Id;
-	int t1Id;
-	bool t0Down;
-	bool t1Down;
-	float t0X;
-	float t0Y;
-	float t1X;
-	float t1Y;
+	int t0Id = 0;
+	int t1Id = 0;
+	bool t0Down = false;
+	bool t1Down = false;
+	float t0X = 0.f;
+	float t0Y = 0.f;
+	float t1X = 0.f;
+	float t1Y = 0.f;
 } TOUCH_STATE;
+
+typedef struct JSL_SETTINGS {
+	int gyroSpace = 0;
+	int colour = 0;
+	int playerNumber = 0;
+	int controllerType = 0;
+	int splitType = 0;
+	bool isCalibrating = false;
+	bool autoCalibrationEnabled = false;
+	bool isConnected = false;
+} JSL_SETTINGS;
 
 extern "C" JOY_SHOCK_API int JslConnectDevices();
 extern "C" JOY_SHOCK_API int JslGetConnectedDeviceHandles(int* deviceHandleArray, int size);
@@ -211,8 +222,10 @@ extern "C" JOY_SHOCK_API void JslSetTouchCallback(void(*callback)(int, TOUCH_STA
 // this function will get called for each device when it is newly connected
 extern "C" JOY_SHOCK_API void JslSetConnectCallback(void(*callback)(int));
 // this function will get called for each device when it is disconnected
-extern "C" JOY_SHOCK_API void JslSetDisonnectCallback(void(*callback)(int, bool));
+extern "C" JOY_SHOCK_API void JslSetDisconnectCallback(void(*callback)(int, bool));
 
+// super-getter for reading a whole lot of state at once
+extern "C" JOY_SHOCK_API JSL_SETTINGS JslGetControllerInfoAndSettings(int deviceId);
 // what kind of controller is this?
 extern "C" JOY_SHOCK_API int JslGetControllerType(int deviceId);
 // is this a left, right, or full controller?

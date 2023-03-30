@@ -964,6 +964,47 @@ void JslSetDisconnectCallback(void(*callback)(int, bool)) {
 	_callbackLock.unlock();
 }
 
+// super-getter for reading a whole lot of state at once
+JSL_SETTINGS JslGetControllerInfoAndSettings(int deviceId)
+{
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
+	JoyShock* jc = GetJoyShockFromHandle(deviceId);
+	if (jc != nullptr) {
+		JSL_SETTINGS settings;
+
+		settings.gyroSpace = jc->gyroSpace;
+		settings.playerNumber = jc->player_number;
+		settings.splitType = jc->left_right;
+		settings.isConnected = true;
+		settings.isCalibrating = jc->use_continuous_calibration;
+		settings.autoCalibrationEnabled = jc->motion.GetCalibrationMode() != GamepadMotionHelpers::CalibrationMode::Manual;
+
+		switch (jc->controller_type)
+		{
+		case ControllerType::s_ds4:
+			settings.controllerType = JS_TYPE_DS4;
+			break;
+		case ControllerType::s_ds:
+			settings.controllerType = JS_TYPE_DS;
+			break;
+		default:
+		case ControllerType::n_switch:
+			settings.controllerType = jc->left_right;
+			settings.colour = jc->body_colour;
+			break;
+		}
+
+		if (jc->controller_type != ControllerType::n_switch)
+		{
+			// get led colour
+			settings.colour = (int)(jc->led_b) | ((int)(jc->led_g) << 8) | ((int)(jc->led_r) << 16);
+		}
+
+		return settings;
+	}
+	return {};
+}
+
 // what split type of controller is this?
 int JslGetControllerType(int deviceId)
 {

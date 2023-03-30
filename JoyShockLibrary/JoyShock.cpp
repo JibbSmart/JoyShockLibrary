@@ -381,6 +381,7 @@ public:
 		}
 		float gravX, gravY, gravZ;
 		motion.GetGravity(gravX, gravY, gravZ);
+		modifying_lock.unlock();
 		switch (gyroSpace)
 		{
 		default:
@@ -395,7 +396,6 @@ public:
 			gyroZ = 0.f;
 			break;
 		}
-		modifying_lock.unlock();
 	}
 
 	void reset_continuous_calibration() {
@@ -405,16 +405,12 @@ public:
 	}
 
 	void push_sensor_samples(float gyroX, float gyroY, float gyroZ, float accelX, float accelY, float accelZ, float deltaTime) {
-		modifying_lock.lock();
 		motion.ProcessMotion(gyroX, gyroY, gyroZ, accelX, accelY, accelZ, deltaTime);
-		modifying_lock.unlock();
 	}
 
 	void get_calibrated_gyro(float& gyroX, float& gyroY, float& gyroZ)
 	{
-		modifying_lock.lock();
 		motion.GetCalibratedGyro(gyroX, gyroY, gyroZ);
-		modifying_lock.unlock();
 	}
 
 	MOTION_STATE get_motion_state()
