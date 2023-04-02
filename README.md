@@ -131,6 +131,8 @@ JslSetGyroSpace lets you choose one of those spaces, and the transformation will
 
 **void JslSetCalibrationOffset(int deviceId, float xOffset, float yOffset, float zOffset)** - Manually set the calibrated offset value for the given device's gyro.
 
+**JSL_AUTO_CALIBRATION JslGetAutoCalibrationStatus(int deviceId)** - Get whether auto calibration is enabled, whether we think the controller is currently being held still, and how confident we are in its auto calibration. If you want to prompt the user to manually calibrate their controller, you can use auto calibration, and read these values to show to the user whether the controller is at rest as well as progress for calibration. Then, you can either leave auto calibration enabled (when confidence is high, auto calibration becomes difficult to trigger accidentally), or just disable auto calibration to prevent further changes without the user triggering it manually again.
+
 **void JslSetCallback(void(\*callback)(int, JOY\_SHOCK\_STATE, JOY\_SHOCK\_STATE, IMU\_STATE, IMU\_STATE, float))** - Set a callback function by which JoyShockLibrary can report the current state for each device. This callback will be given the *deviceId* for the reporting device, its current button + trigger + stick state, its previous button + trigger + stick state, its current accelerometer + gyro state, its previous accelerometer + gyro state, and the amount of time since the last report for this device (in seconds).
 
 **void JslSetTouchCallback(void(\*callback)(int, TOUCH\_STATE, TOUCH\_STATE, float))** - Set a callback function by which JoyShockLibrary can report the current touchpad state for each device. Only DualShock 4s will use this. This callback will be given the *deviceId* for the reporting device, its current and previous touchpad states, and the amount of time since the last report for this device (in seconds).
@@ -138,6 +140,8 @@ JslSetGyroSpace lets you choose one of those spaces, and the transformation will
 **void JslSetConnectCallback(void(\*callback)(int))** - Set a callback function when a new device has been connected. This is *not* watching for new connections. You still need to explicitly call JslConnectDevices. From there, this callback will be called for each *new* device that is connected, giving you the opportunity to set default settings on those devices. It gives the unique deviceId for the newly connected device. This deviceId may be re-used if the device is connecting through the same port as a previous device.
 
 **void JslSetDisconnectCallback(void(\*callback)(int, bool))** - Set a callback function when a device has been disconnected. When this is called, the given deviceId is no longer useful to you -- all JslGet* functions will give empty/neutral results as there's no device at that id to read from. The bool your callback receives is whether or not this disconnect was due to a timeout. Otherwise, it's an explicit disconnection (device physically disconnected).
+
+**JSL_SETTINGS JslGetControllerInfoAndSettings(int deviceId)** - Read a bunch of info from the controller in one go instead of requesting each thing one at a time. Gyro space, colour (for LED on PlayStation controllers, for the controller itself for Switch controllers), whether it's calibrating, etc. See JoyShockLibrary.h for more info.
 
 **int JslGetControllerType(int deviceId)** - What type of controller is this device?
   1. Left Joy-Con
