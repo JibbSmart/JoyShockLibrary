@@ -85,8 +85,8 @@ namespace GamepadMotionHelpers
 		Vec MaxAccel;
 		Vec MeanAccel;
 		Vec StartAccel;
-		int NumSamples;
-		float TimeSampled;
+		int NumSamples = 0;
+		float TimeSampled = 0.f;
 
 		SensorMinMaxWindow();
 		void Reset(float remainder);
@@ -115,8 +115,8 @@ namespace GamepadMotionHelpers
 		bool IsSteady() { return bIsSteady; }
 
 	private:
-		Vec MinDeltaGyro = Vec(10.f);
-		Vec MinDeltaAccel = Vec(10.f);
+		Vec MinDeltaGyro = Vec(1.f);
+		Vec MinDeltaAccel = Vec(0.25f);
 		float RecalibrateThreshold = 1.f;
 		float SensorFusionSkippedTime = 0.f;
 		float TimeSteadySensorFusion = 0.f;
@@ -195,7 +195,7 @@ public:
 	int MinStillnessSamples = 10;
 	float MinStillnessCollectionTime = 0.5f;
 	float MinStillnessCorrectionTime = 2.f;
-	float MaxStillnessError = 1.25f;
+	float MaxStillnessError = 2.f;
 	float StillnessSampleDeteriorationRate = 0.2f;
 	float StillnessErrorClimbRate = 0.1f;
 	float StillnessErrorDropOnRecalibrate = 0.1f;
@@ -210,6 +210,7 @@ public:
 	float SensorFusionAngularAccelerationThreshold = 20.f;
 	float SensorFusionCalibrationEaseInTime = 3.f;
 	float SensorFusionCalibrationHalfTime = 0.1f;
+	float SensorFusionConfidenceRate = 1.f;
 
 	float GravityCorrectionShakinessMaxThreshold = 0.4f;
 	float GravityCorrectionShakinessMinThreshold = 0.01f;
@@ -704,16 +705,20 @@ namespace GamepadMotionHelpers
 	inline AutoCalibration::AutoCalibration()
 	{
 		CalibrationData = nullptr;
-		MinMaxWindow.TimeSampled = 0.f;
-		TimeSteadyStillness = 0.f;
+		Reset();
 	}
 
 	inline void AutoCalibration::Reset()
 	{
-		MinMaxWindow.TimeSampled = 0.f;
-		TimeSteadyStillness = 0.f;
+		MinMaxWindow.Reset(0.f);
 		Confidence = 0.f;
 		bIsSteady = false;
+		MinDeltaGyro = Vec(1.f);
+		MinDeltaAccel = Vec(0.25f);
+		RecalibrateThreshold = 1.f;
+		SensorFusionSkippedTime = 0.f;
+		TimeSteadySensorFusion = 0.f;
+		TimeSteadyStillness = 0.f;
 	}
 
 	inline bool AutoCalibration::AddSampleStillness(const Vec& inGyro, const Vec& inAccel, float deltaTime, bool doSensorFusion)
@@ -726,6 +731,11 @@ namespace GamepadMotionHelpers
 		}
 
 		if (!Settings)
+		{
+			return false;
+		}
+
+		if (!CalibrationData)
 		{
 			return false;
 		}
@@ -754,7 +764,10 @@ namespace GamepadMotionHelpers
 		const Vec climbThisTick = Vec(stillnessSampleDeteriorationRate * deltaTime);
 		if (stillnessGyroDelta < 0.f)
 		{
-			MinDeltaGyro += climbThisTick;
+			if (Confidence < 1.f)
+			{
+				MinDeltaGyro += climbThisTick;
+			}
 		}
 		else
 		{
@@ -762,7 +775,10 @@ namespace GamepadMotionHelpers
 		}
 		if (stillnessAccelDelta < 0.f)
 		{
-			MinDeltaAccel += climbThisTick;
+			if (Confidence < 1.f)
+			{
+				MinDeltaAccel += climbThisTick;
+			}
 		}
 		else
 		{
@@ -792,7 +808,7 @@ namespace GamepadMotionHelpers
 			accelDelta.y <= MinDeltaAccel.y * RecalibrateThreshold &&
 			accelDelta.z <= MinDeltaAccel.z * RecalibrateThreshold)
 		{
-			if (CalibrationData != nullptr && MinMaxWindow.NumSamples >= minStillnessSamples && MinMaxWindow.TimeSampled >= minStillnessCorrectionTime)
+			if (MinMaxWindow.NumSamples >= minStillnessSamples && MinMaxWindow.TimeSampled >= minStillnessCorrectionTime)
 			{
 				/*if (TimeSteadyStillness == 0.f)
 				{
@@ -925,11 +941,13 @@ namespace GamepadMotionHelpers
 		const float sensorFusionCalibrationSmoothingStrength = Settings->SensorFusionCalibrationSmoothingStrength;
 		const float sensorFusionAngularAccelerationThreshold = Settings->SensorFusionAngularAccelerationThreshold;
 		const float sensorFusionCalibrationEaseInTime = Settings->SensorFusionCalibrationEaseInTime;
-		const float sensorFusionCalibrationHalfTime = Settings->SensorFusionCalibrationHalfTime;
+		const float sensorFusionCalibrationHalfTime = Settings->SensorFusionCalibrationHalfTime * Confidence;
+		const float sensorFusionConfidenceRate = Settings->SensorFusionConfidenceRate;
 
 		deltaTime += SensorFusionSkippedTime;
 		SensorFusionSkippedTime = 0.f;
 		bool calibrated = false;
+		bool isSteady = false;
 		
 		// framerate independent lerp smoothing: https://www.gamasutra.com/blogs/ScottLembcke/20180404/316046/Improved_Lerp_Smoothing.php
 		const float smoothingLerpFactor = exp2f(-sensorFusionCalibrationSmoothingStrength * deltaTime);
@@ -975,6 +993,8 @@ namespace GamepadMotionHelpers
 			// recalibrate over time proportional to the difference between the calculated bias and the current assumed bias
 			const float sensorFusionLerpFactor = sensorFusionCalibrationHalfTime <= 0.f ? 0.f : exp2f(-calibrationEaseIn * deltaTime / sensorFusionCalibrationHalfTime);
 			Vec newGyroBias = (SmoothedAngularVelocityGyro - SmoothedAngularVelocityAccel).Lerp(oldGyroBias, sensorFusionLerpFactor);
+			Confidence = std::min(Confidence + deltaTime * sensorFusionConfidenceRate, 1.f);
+			isSteady = true;
 			// don't change bias in axes that can't be affected by the gravity direction
 			Vec axisCalibrationStrength = thisNormal.Abs();
 			if (axisCalibrationStrength.x > 0.7f)
@@ -1010,6 +1030,8 @@ namespace GamepadMotionHelpers
 		//printf("Gyro: %.4f, %.4f, %.4f | Accel: %.4f, %.4f, %.4f\n",
 		//	SmoothedAngularVelocityGyro.x, SmoothedAngularVelocityGyro.y, SmoothedAngularVelocityGyro.z,
 		//	SmoothedAngularVelocityAccel.x, SmoothedAngularVelocityAccel.y, SmoothedAngularVelocityAccel.z);
+
+		bIsSteady = isSteady;
 
 		return calibrated;
 	}
