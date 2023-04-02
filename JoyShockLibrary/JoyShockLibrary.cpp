@@ -943,6 +943,21 @@ void JslSetCalibrationOffset(int deviceId, float xOffset, float yOffset, float z
 		jc->modifying_lock.unlock();
 	}
 }
+JSL_AUTO_CALIBRATION JslGetAutoCalibrationStatus(int deviceId) {
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
+	JoyShock* jc = GetJoyShockFromHandle(deviceId);
+	if (jc != nullptr) {
+		JSL_AUTO_CALIBRATION calibration;
+
+		calibration.autoCalibrationEnabled = jc->motion.GetCalibrationMode() != GamepadMotionHelpers::CalibrationMode::Manual;
+		calibration.confidence = jc->motion.GetAutoCalibrationConfidence();
+		calibration.isSteady = jc->motion.GetAutoCalibrationIsSteady();
+
+		return calibration;
+	}
+
+	return {};
+}
 
 // this function will get called for each input event from each controller
 void JslSetCallback(void(*callback)(int, JOY_SHOCK_STATE, JOY_SHOCK_STATE, IMU_STATE, IMU_STATE, float)) {

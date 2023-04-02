@@ -119,6 +119,12 @@ typedef struct TOUCH_STATE {
 	float t1Y = 0.f;
 } TOUCH_STATE;
 
+typedef struct JSL_AUTO_CALIBRATION {
+	float confidence = 0.f;
+	bool autoCalibrationEnabled = false;
+	bool isSteady = false;
+} JSL_AUTO_CALIBRATION;
+
 typedef struct JSL_SETTINGS {
 	int gyroSpace = 0;
 	int colour = 0;
@@ -215,6 +221,7 @@ extern "C" JOY_SHOCK_API void JslPauseContinuousCalibration(int deviceId);
 extern "C" JOY_SHOCK_API void JslSetAutomaticCalibration(int deviceId, bool enabled);
 extern "C" JOY_SHOCK_API void JslGetCalibrationOffset(int deviceId, float& xOffset, float& yOffset, float& zOffset);
 extern "C" JOY_SHOCK_API void JslSetCalibrationOffset(int deviceId, float xOffset, float yOffset, float zOffset);
+extern "C" JOY_SHOCK_API JSL_AUTO_CALIBRATION JslGetAutoCalibrationStatus(int deviceId);
 
 // this function will get called for each input event from each controller
 extern "C" JOY_SHOCK_API void JslSetCallback(void(*callback)(int, JOY_SHOCK_STATE, JOY_SHOCK_STATE, IMU_STATE, IMU_STATE, float));

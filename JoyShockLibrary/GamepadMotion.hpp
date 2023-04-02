@@ -1,6 +1,6 @@
 // Copyright (c) 2020-2023 Julian "Jibb" Smart
 // Released under the MIT license. See https://github.com/JibbSmart/GamepadMotionHelpers/blob/main/LICENSE for more info
-// Version 8
+// Version 9
 
 #pragma once
 
@@ -103,12 +103,16 @@ namespace GamepadMotionHelpers
 		Vec PreviousAccel;
 
 		AutoCalibration();
+		void Reset();
 		bool AddSampleStillness(const Vec& inGyro, const Vec& inAccel, float deltaTime, bool doSensorFusion);
 		void NoSampleStillness();
 		bool AddSampleSensorFusion(const Vec& inGyro, const Vec& inAccel, float deltaTime);
 		void NoSampleSensorFusion();
 		void SetCalibrationData(GyroCalibration* calibrationData);
 		void SetSettings(GamepadMotionSettings* settings);
+		
+		float Confidence = 0.f;
+		bool IsSteady() { return bIsSteady; }
 
 	private:
 		Vec MinDeltaGyro = Vec(10.f);
@@ -117,6 +121,7 @@ namespace GamepadMotionHelpers
 		float SensorFusionSkippedTime = 0.f;
 		float TimeSteadySensorFusion = 0.f;
 		float TimeSteadyStillness = 0.f;
+		bool bIsSteady = false;
 
 		GyroCalibration* CalibrationData;
 		GamepadMotionSettings* Settings;
@@ -196,6 +201,7 @@ public:
 	float StillnessErrorDropOnRecalibrate = 0.1f;
 	float StillnessCalibrationEaseInTime = 3.f;
 	float StillnessCalibrationHalfTime = 0.1f;
+	float StillnessConfidenceRate = 1.f;
 
 	float StillnessGyroDelta = -1.f;
 	float StillnessAccelDelta = -1.f;
@@ -244,6 +250,9 @@ public:
 	void ResetContinuousCalibration();
 	void GetCalibrationOffset(float& xOffset, float& yOffset, float& zOffset);
 	void SetCalibrationOffset(float xOffset, float yOffset, float zOffset, int weight);
+	float GetAutoCalibrationConfidence();
+	void SetAutoCalibrationConfidence(float newConfidence);
+	bool GetAutoCalibrationIsSteady();
 
 	GamepadMotionHelpers::CalibrationMode GetCalibrationMode();
 	void SetCalibrationMode(GamepadMotionHelpers::CalibrationMode calibrationMode);
@@ -681,7 +690,6 @@ namespace GamepadMotionHelpers
 		NumSamples++;
 		TimeSampled += deltaTime;
 
-		// https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Welford's_online_algorithm
 		Vec delta = inGyro - MeanGyro;
 		MeanGyro += delta * (1.f / NumSamples);
 		delta = inAccel - MeanAccel;
@@ -698,6 +706,14 @@ namespace GamepadMotionHelpers
 		CalibrationData = nullptr;
 		MinMaxWindow.TimeSampled = 0.f;
 		TimeSteadyStillness = 0.f;
+	}
+
+	inline void AutoCalibration::Reset()
+	{
+		MinMaxWindow.TimeSampled = 0.f;
+		TimeSteadyStillness = 0.f;
+		Confidence = 0.f;
+		bIsSteady = false;
 	}
 
 	inline bool AutoCalibration::AddSampleStillness(const Vec& inGyro, const Vec& inAccel, float deltaTime, bool doSensorFusion)
@@ -723,7 +739,8 @@ namespace GamepadMotionHelpers
 		const float stillnessErrorClimbRate = Settings->StillnessErrorClimbRate;
 		const float stillnessErrorDropOnRecalibrate = Settings->StillnessErrorDropOnRecalibrate;
 		const float stillnessCalibrationEaseInTime = Settings->StillnessCalibrationEaseInTime;
-		const float stillnessCalibrationHalfTime = Settings->StillnessCalibrationHalfTime;
+		const float stillnessCalibrationHalfTime = Settings->StillnessCalibrationHalfTime * Confidence;
+		const float stillnessConfidenceRate = Settings->StillnessConfidenceRate;
 		const float stillnessGyroDelta = Settings->StillnessGyroDelta;
 		const float stillnessAccelDelta = Settings->StillnessAccelDelta;
 
@@ -733,6 +750,7 @@ namespace GamepadMotionHelpers
 		const Vec accelDelta = MinMaxWindow.MaxAccel - MinMaxWindow.MinAccel;
 
 		bool calibrated = false;
+		bool isSteady = false;
 		const Vec climbThisTick = Vec(stillnessSampleDeteriorationRate * deltaTime);
 		if (stillnessGyroDelta < 0.f)
 		{
@@ -789,6 +807,8 @@ namespace GamepadMotionHelpers
 				const Vec oldGyroBias = Vec(CalibrationData->X, CalibrationData->Y, CalibrationData->Z) / std::max((float)CalibrationData->NumSamples, 1.f);
 				const float stillnessLerpFactor = stillnessCalibrationHalfTime <= 0.f ? 0.f : exp2f(-calibrationEaseIn * deltaTime / stillnessCalibrationHalfTime);
 				Vec newGyroBias = calibratedGyro.Lerp(oldGyroBias, stillnessLerpFactor);
+				Confidence = std::min(Confidence + deltaTime * stillnessConfidenceRate, 1.f);
+				isSteady = true;
 
 				if (doSensorFusion)
 				{
@@ -849,6 +869,7 @@ namespace GamepadMotionHelpers
 			MinMaxWindow.Reset(0.f);
 		}
 
+		bIsSteady = isSteady;
 		return calibrated;
 	}
 
@@ -1182,6 +1203,7 @@ inline void GamepadMotion::PauseContinuousCalibration()
 inline void GamepadMotion::ResetContinuousCalibration()
 {
 	GyroCalibration = {};
+	AutoCalibration.Reset();
 }
 
 inline void GamepadMotion::GetCalibrationOffset(float& xOffset, float& yOffset, float& zOffset)
@@ -1205,6 +1227,21 @@ inline void GamepadMotion::SetCalibrationOffset(float xOffset, float yOffset, fl
 	GyroCalibration.X = xOffset * weight;
 	GyroCalibration.Y = yOffset * weight;
 	GyroCalibration.Z = zOffset * weight;
+}
+
+inline float GamepadMotion::GetAutoCalibrationConfidence()
+{
+	return AutoCalibration.Confidence;
+}
+
+inline void GamepadMotion::SetAutoCalibrationConfidence(float newConfidence)
+{
+	AutoCalibration.Confidence = newConfidence;
+}
+
+inline bool GamepadMotion::GetAutoCalibrationIsSteady()
+{
+	return AutoCalibration.IsSteady();
 }
 
 inline GamepadMotionHelpers::CalibrationMode GamepadMotion::GetCalibrationMode()
