@@ -189,6 +189,8 @@ JoyShockLibrary v2 changes the gyro and accelerometer axes from previous version
 JoyShockLibrary v3 makes some small changes to the behaviour of some functions:
 * **JslConnectDevices** no longer calls **JslDisconnectAndDisposeAll** before looking for connections. Instead of reconnecting all devices, it'll only make new connections, without disrupting current connections. If you were counting on the old behaviour, call JslDisconnectAndDisposeAll before calling JslConnectDevices.
 
+Using a newer version of GamepadMotionHelpers, if you enable auto calibration, it will be applied more quickly at first, and then less quickly when it has more confidence in the current calibration. You can reset these at any time.
+
 ## Credits
 I'm Jibb Smart, and I made JoyShockLibrary. JoyShockLibrary has also benefited from the contributions of:
 * Romeo Calota (Linux support + general portability improvements)
