@@ -880,6 +880,16 @@ float JslGetPollRate(int deviceId)
 	}
 	return 0.0f;
 }
+float JslGetTimeSinceLastUpdate(int deviceId)
+{
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
+	JoyShock* jc = GetJoyShockFromHandle(deviceId);
+	if (jc != nullptr) {
+		auto time_now = std::chrono::steady_clock::now();
+		return (float)(std::chrono::duration_cast<std::chrono::microseconds>(time_now - jc->last_polled).count() / 1000000.0);
+	}
+	return 0.0f;
+}
 
 // calibration
 void JslResetContinuousCalibration(int deviceId) {

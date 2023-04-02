@@ -117,6 +117,8 @@ JslSetGyroSpace lets you choose one of those spaces, and the transformation will
 
 **float JslGetPollRate(int deviceId)** - Different devices report back new information at different rates. For the given device, this gives how many times one would usually expect the device to report back per second.
 
+**float JslGetTimeSinceLastUpdate(int deviceId)** - Getting the time since the last update was received (in seconds) can be helpful for communicating a poor connection to the user (which can help communicate to wireless players that they need to move closer to the console or in some other way improve the connection, as [Fly Together](https://youtu.be/BjksCGFknKo?t=782) communicates so well in this example).
+
 **void JslResetContinuousCalibration(int deviceId)** - JoyShockLibrary has helpful functions for calibrating the gyroscope by averaging out its input over time. This deletes all calibration data that's been accumulated, if any, this session.
 
 **void JslStartContinuousCalibration(int deviceId)** - Start collecting gyro data, recording the ongoing average and using that to offset gyro output.

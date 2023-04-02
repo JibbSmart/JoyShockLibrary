@@ -206,6 +206,7 @@ extern "C" JOY_SHOCK_API float JslGetTouchY(int deviceId, bool secondTouch = fal
 extern "C" JOY_SHOCK_API float JslGetStickStep(int deviceId);
 extern "C" JOY_SHOCK_API float JslGetTriggerStep(int deviceId);
 extern "C" JOY_SHOCK_API float JslGetPollRate(int deviceId);
+extern "C" JOY_SHOCK_API float JslGetTimeSinceLastUpdate(int deviceId);
 
 // calibration
 extern "C" JOY_SHOCK_API void JslResetContinuousCalibration(int deviceId);
