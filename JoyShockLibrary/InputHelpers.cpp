@@ -457,13 +457,6 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 			imu_state.gyroZ = totalGyroX;
 
 			//printf("Switch accel: %.4f, %.4f, %.4f\n", imu_state.accelX, imu_state.accelY, imu_state.accelZ);
-
-			jc->modifying_lock.lock();
-			jc->push_sensor_samples(imu_state.gyroX, imu_state.gyroY, imu_state.gyroZ,
-					imu_state.accelX, imu_state.accelY, imu_state.accelZ, jc->delta_time);
-
-			jc->get_calibrated_gyro(imu_state.gyroX, imu_state.gyroY, imu_state.gyroZ);
-			jc->modifying_lock.unlock();
 		}
 
 	}
@@ -540,9 +533,16 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
 			// just need to negate gyroZ
 			imu_state.gyroZ = -imu_state.gyroZ;
 		}
-
-		jc->imu_state = imu_state;
 	}
+
+	jc->modifying_lock.lock();
+	jc->push_sensor_samples(imu_state.gyroX, imu_state.gyroY, imu_state.gyroZ,
+		imu_state.accelX, imu_state.accelY, imu_state.accelZ, jc->delta_time);
+
+	jc->get_calibrated_gyro(imu_state.gyroX, imu_state.gyroY, imu_state.gyroZ);
+	jc->modifying_lock.unlock();
+
+	jc->imu_state = imu_state;
 
 	return true;
 }
