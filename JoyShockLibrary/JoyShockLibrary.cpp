@@ -166,12 +166,13 @@ void pollIndividualLoop(JoyShock *jc) {
 			// and the callback could be time-consuming (up to the user), so we use a readers-writer-lock.
 			if (handle_input(jc, buf, 64, hasIMU)) { // but the user won't necessarily have a callback at all, so we'll skip the lock altogether in that case
 				// accumulate gyro
-				jc->push_cumulative_gyro(jc->imu_state.gyroX, jc->imu_state.gyroY, jc->imu_state.gyroZ);
+				IMU_STATE imuState = jc->get_transformed_imu_state(jc->imu_state);
+				jc->push_cumulative_gyro(imuState.gyroX, imuState.gyroY, imuState.gyroZ);
 				if (_pollCallback != nullptr || _pollTouchCallback != nullptr)
 				{
 					std::shared_lock<std::shared_timed_mutex> lock(_callbackLock);
 					if (_pollCallback != nullptr) {
-						_pollCallback(jc->intHandle, jc->simple_state, jc->last_simple_state, jc->get_transformed_imu_state(jc->imu_state), jc->get_transformed_imu_state(jc->last_imu_state), jc->delta_time);
+						_pollCallback(jc->intHandle, jc->simple_state, jc->last_simple_state, imuState, jc->get_transformed_imu_state(jc->last_imu_state), jc->delta_time);
 					}
 					// touchpad will have its own callback so that it doesn't change the existing api
 					if (jc->controller_type != ControllerType::n_switch && _pollTouchCallback != nullptr) {
