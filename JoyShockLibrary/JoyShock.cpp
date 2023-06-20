@@ -19,6 +19,7 @@ enum ControllerType { n_switch, s_ds4, s_ds };
 // PS5 stuff
 #define DS_VENDOR 0x054C
 #define DS_USB 0x0CE6
+#define DS_USB_V2 0x0DF2 // DualSense Edge
 
 // PS4 stuff
 // http://www.psdevwiki.com/ps4/DS4-USB
@@ -292,7 +293,8 @@ public:
 			this->is_usb = true; // this controller is wired
 		}
 
-		if (dev->product_id == DS_USB) {
+		if (dev->product_id == DS_USB ||
+			dev->product_id == DS_USB_V2) {
 			this->name = std::string("DualSense");
 			this->left_right = 3; // left and right?
 			this->controller_type = ControllerType::s_ds;
