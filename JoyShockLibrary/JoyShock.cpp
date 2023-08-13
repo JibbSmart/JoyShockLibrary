@@ -246,7 +246,8 @@ public:
 	}
 
 public:
-	void init(struct hid_device_info *dev, hid_device* inHandle, int uniqueHandle, const std::string &inPath) {
+	void init(struct hid_device_info *dev, hid_device* inHandle, int uniqueHandle, const std::string &inPath)
+	{
 		this->path = inPath;
 
 		if (dev->product_id == JOYCON_CHARGING_GRIP) {

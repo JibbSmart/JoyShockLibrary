@@ -1004,6 +1004,7 @@ JSL_SETTINGS JslGetControllerInfoAndSettings(int deviceId)
 		settings.isConnected = true;
 		settings.isCalibrating = jc->use_continuous_calibration;
 		settings.autoCalibrationEnabled = jc->motion.GetCalibrationMode() != GamepadMotionHelpers::CalibrationMode::Manual;
+		settings.path = jc->path;
 
 		switch (jc->controller_type)
 		{
