@@ -136,7 +136,7 @@ typedef struct JSL_SETTINGS {
 	bool isCalibrating = false;
 	bool autoCalibrationEnabled = false;
 	bool isConnected = false;
-	std::string path;
+	char path[512];
 } JSL_SETTINGS;
 
 extern "C" JOY_SHOCK_API int JslConnectDevices();
