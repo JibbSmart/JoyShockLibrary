@@ -224,9 +224,9 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
         if ((hat > 4) & (hat < 8)) jc->simple_state.buttons |= JSMASK_LEFT; // left = SW | W | NW
 
         jc->simple_state.buttons |= ((int) (packet[indexOffset + 7] >> 4) << JSOFFSET_W) & JSMASK_W;
-        jc->simple_state.buttons |= ((int) (packet[indexOffset + 7] >> 7) << JSOFFSET_N) & JSMASK_N;
         jc->simple_state.buttons |= ((int) (packet[indexOffset + 7] >> 5) << JSOFFSET_S) & JSMASK_S;
         jc->simple_state.buttons |= ((int) (packet[indexOffset + 7] >> 6) << JSOFFSET_E) & JSMASK_E;
+        jc->simple_state.buttons |= ((int) (packet[indexOffset + 7] >> 7) << JSOFFSET_N) & JSMASK_N;
         jc->simple_state.buttons |= ((int) (packet[indexOffset + 8] >> 6) << JSOFFSET_LCLICK) & JSMASK_LCLICK;
         jc->simple_state.buttons |= ((int) (packet[indexOffset + 8] >> 7) << JSOFFSET_RCLICK) & JSMASK_RCLICK;
         jc->simple_state.buttons |= ((int) (packet[indexOffset + 8] >> 5) << JSOFFSET_OPTIONS) & JSMASK_OPTIONS;
@@ -235,9 +235,12 @@ bool handle_input(JoyShock *jc, uint8_t *packet, int len, bool &hasIMU) {
         jc->simple_state.buttons |= ((int) (packet[indexOffset + 8]) << JSOFFSET_L) & JSMASK_L;
         jc->simple_state.buttons |= ((int) (packet[indexOffset + 9]) << JSOFFSET_PS) & JSMASK_PS;
         // The DS5 has a mute button that is normally ignored on PC. We can use this.
+        jc->simple_state.buttons |= ((int) (packet[indexOffset + 9] >> 1) << JSOFFSET_TOUCHPAD_CLICK) & JSMASK_TOUCHPAD_CLICK;
         jc->simple_state.buttons |= ((int) (packet[indexOffset + 9] >> 2) << JSOFFSET_MIC) & JSMASK_MIC;
-        jc->simple_state.buttons |=
-                ((int) (packet[indexOffset + 9] >> 1) << JSOFFSET_TOUCHPAD_CLICK) & JSMASK_TOUCHPAD_CLICK;
+		jc->simple_state.buttons |= ((int)(packet[indexOffset + 9] >> 4) << JSOFFSET_FNL) & JSMASK_FNL;
+		jc->simple_state.buttons |= ((int)(packet[indexOffset + 9] >> 5) << JSOFFSET_FNR) & JSMASK_FNR;
+		jc->simple_state.buttons |= ((int)(packet[indexOffset + 9] >> 6) << JSOFFSET_SL) & JSMASK_SL;
+		jc->simple_state.buttons |= ((int) (packet[indexOffset + 9] >> 7) << JSOFFSET_SR) & JSMASK_SR;
         //jc->btns.zr = (packet[indexOffset+6] >> 3) & 1;
         //jc->btns.zl = (packet[indexOffset+6] >> 2) & 1;
         jc->simple_state.rTrigger = packet[indexOffset + 5] / 255.0f;
