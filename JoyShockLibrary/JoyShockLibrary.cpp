@@ -291,7 +291,8 @@ int JslConnectDevices()
 				cur_dev->product_id == DS4_USB_V2 ||
 				cur_dev->product_id == DS4_USB_DONGLE ||
 				cur_dev->product_id == DS4_BT ||
-				cur_dev->product_id == DS_USB;
+				cur_dev->product_id == DS_USB ||
+				cur_dev->product_id == DS_USB_V2;
 			break;
 		case BROOK_DS4_VENDOR:
 			isSupported = cur_dev->product_id == BROOK_DS4_USB;
