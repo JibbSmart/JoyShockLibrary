@@ -546,6 +546,44 @@ bool JslStillConnected(int deviceId)
 	return GetJoyShockFromHandle(deviceId) != nullptr;
 }
 
+void JslDisconnect(int deviceId)
+{
+	_connectedLock.lock();
+
+	JoyShock* jc = GetJoyShockFromHandle(deviceId);
+	if (jc != nullptr)
+	{
+		if (jc->controller_type == ControllerType::s_ds4) {
+			if (jc->is_usb) {
+				jc->deinit_ds4_usb();
+			}
+			else {
+				jc->deinit_ds4_bt();
+			}
+		}
+		else if (jc->controller_type == ControllerType::s_ds) {
+
+		} // TODO: Charging grip? bluetooth?
+		else if (jc->is_usb) {
+			jc->deinit_usb();
+		}
+		// cleanup
+		std::thread* thread = jc->thread;
+		jc->delete_on_finish = true;
+		jc->remove_on_finish = false;
+		jc->cancel_thread = true;
+		thread->detach();
+		delete thread;
+
+		_joyshocks.erase(deviceId);
+		_byPath.erase(jc->path);
+
+		hid_close(jc->handle);
+	}
+
+	_connectedLock.unlock();
+}
+
 // get buttons as bits in the following order, using North South East West to name face buttons to avoid ambiguity between Xbox and Nintendo layouts:
 // 0x00001: up
 // 0x00002: down
@@ -1005,6 +1043,7 @@ JSL_SETTINGS JslGetControllerInfoAndSettings(int deviceId)
 		settings.isConnected = true;
 		settings.isCalibrating = jc->use_continuous_calibration;
 		settings.autoCalibrationEnabled = jc->motion.GetCalibrationMode() != GamepadMotionHelpers::CalibrationMode::Manual;
+		std::strcpy(settings.path, jc->path.c_str());
 
 		switch (jc->controller_type)
 		{
