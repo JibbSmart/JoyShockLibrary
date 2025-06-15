@@ -331,3 +331,4 @@ build-*
 .idea/
 cmake-build*
 
+/out
