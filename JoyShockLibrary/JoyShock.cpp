@@ -14,7 +14,7 @@
 #define _wcsdup wcsdup
 #endif
 
-enum ControllerType { n_switch, s_ds4, s_ds };
+enum ControllerType { n_switch, s_ds3, s_ds4, s_ds };
 
 // PS5 stuff
 #define DS_VENDOR 0x054C
@@ -89,17 +89,6 @@ public:
 
 	int global_count = 0;
 
-	// calibration data:
-	struct brcm_hdr {
-		uint8_t cmd;
-		uint8_t rumble[9];
-	};
-
-	struct brcm_cmd_01 {
-		uint8_t subcmd;
-		uint32_t offset;
-		uint8_t size;
-	};
 
 	int timing_byte = 0x0;
 
@@ -1444,6 +1433,197 @@ public:
 
         hid_write(handle, &buf[1], 78);
     }
+	
+	void set_ds5_trigger_effects_bt(const ds5_trigger_effect& leftTrigger, const ds5_trigger_effect& rightTrigger)
+    {
+        unsigned char buf[79];
+        memset(buf, 0, 79);
+
+		// Header & Report Information
+		buf[0] = 0xa2; // Output report header, needs to be included in crc32
+		buf[1] = 0x31; // DualSense output report is 0x31
+		buf[2] = 0x02; // DATA (0x02)
+
+		if (leftTrigger.bDirty)
+			buf[3] = buf[3] | 0x08;
+		if (rightTrigger.bDirty)
+			buf[3] = buf[3] | 0x04;
+		
+		buf[13] = rightTrigger.motorMode;
+		buf[14] = rightTrigger.startResistance;
+		buf[15] = rightTrigger.effectForce;
+		buf[16] = rightTrigger.rangeForce;
+		buf[17] = rightTrigger.nearReleaseStrength;
+		buf[18] = rightTrigger.nearMiddleStrength;
+		buf[19] = rightTrigger.pressedStrength;
+		buf[20] = rightTrigger.P6;
+		buf[21] = rightTrigger.P7;
+		buf[22] = rightTrigger.actuationFrequency;
+		buf[23] = rightTrigger.P9;
+		
+		buf[24] = leftTrigger.motorMode;
+		buf[25] = leftTrigger.startResistance;
+		buf[26] = leftTrigger.effectForce;
+		buf[27] = leftTrigger.rangeForce;
+		buf[28] = leftTrigger.nearReleaseStrength;
+		buf[29] = leftTrigger.nearMiddleStrength;
+		buf[30] = leftTrigger.pressedStrength;
+		buf[31] = leftTrigger.P6;
+		buf[32] = leftTrigger.P7;
+		buf[33] = leftTrigger.actuationFrequency;
+		buf[34] = leftTrigger.P9;
+
+        uint32_t crc = crc_32(buf, 75);
+        memcpy(&buf[75], &crc, 4);
+        //buf[75] = (crc >> 24) & 0xFF;
+        //buf[76] = (crc >> 16) & 0xFF;
+        //buf[77] = (crc >> 8) & 0xFF;
+        //buf[78] = crc & 0xFF;
+
+        hid_write(handle, &buf[1], 78);
+    }
+		
+	void set_ds5_trigger_effects_usb(const ds5_trigger_effect& leftTrigger, const ds5_trigger_effect& rightTrigger)
+    {
+        unsigned char buf[79];
+        memset(buf, 0, 79);
+
+        buf[0] = 0xa2; // Output report header, needs to be included in crc32
+        buf[1] = 0x02; // DualSense output report is 0x02 for USB
+
+        // Comment stolen from DS4Windows:
+        // 0x01 Set the main motors (also requires flag 0x02)
+        // 0x02 Set the main motors (also requires flag 0x01)
+        // 0x04 Set the right trigger motor
+        // 0x08 Set the left trigger motor
+        // 0x10 Enable modification of audio volume
+        // 0x20 Enable internal speaker (even while headset is connected)
+        // 0x40 Enable modification of microphone volume
+        // 0x80 Enable internal mic (even while headset is connected)
+        if (leftTrigger.bDirty)
+            buf[2] = buf[2] | 0x08;
+        if (rightTrigger.bDirty)
+            buf[2] = buf[2] | 0x04;
+
+        buf[12] = rightTrigger.motorMode;
+        buf[13] = rightTrigger.startResistance;
+        buf[14] = rightTrigger.effectForce;
+        buf[15] = rightTrigger.rangeForce;
+        buf[16] = rightTrigger.nearReleaseStrength;
+        buf[17] = rightTrigger.nearMiddleStrength;
+        buf[18] = rightTrigger.pressedStrength;
+        buf[19] = rightTrigger.P6;
+        buf[20] = rightTrigger.P7;
+        buf[21] = rightTrigger.actuationFrequency;
+        buf[22] = rightTrigger.P9;
+
+        buf[23] = leftTrigger.motorMode;
+        buf[24] = leftTrigger.startResistance;
+        buf[25] = leftTrigger.effectForce;
+        buf[26] = leftTrigger.rangeForce;
+        buf[27] = leftTrigger.nearReleaseStrength;
+        buf[28] = leftTrigger.nearMiddleStrength;
+        buf[29] = leftTrigger.pressedStrength;
+        buf[30] = leftTrigger.P6;
+        buf[31] = leftTrigger.P7;
+        buf[32] = leftTrigger.actuationFrequency;
+        buf[33] = leftTrigger.P9;
+
+        // USB does not send CRC32
+
+        //uint32_t crc = crc_32(buf, 74);
+        //memcpy(&buf[74], &crc, 4);
+        //buf[75] = (crc >> 24) & 0xFF;
+        //buf[76] = (crc >> 16) & 0xFF;
+        //buf[77] = (crc >> 8) & 0xFF;
+        //buf[78] = crc & 0xFF;
+
+        hid_write(handle, &buf[1], 74);
+    }
+
+    void set_ds5_trigger_effects(const ds5_trigger_effect& leftTrigger, const ds5_trigger_effect& rightTrigger)
+	{
+        if (!is_usb) {
+            set_ds5_trigger_effects_bt(leftTrigger, rightTrigger);
+        }
+        else {
+			set_ds5_trigger_effects_usb(leftTrigger, rightTrigger);
+        }
+
+    }
+
+    void enable_joycon_rumble()
+    {
+        int res;
+        unsigned char buf[10];
+        //Enable Vibration
+        memset(buf, 0, sizeof(buf));
+        buf[0] = 0x01;
+        buf[1] = (++global_count) & 0xF;
+        res = hid_write(handle, buf, sizeof(buf));
+
+        if (global_count > 0xF) {
+            global_count = 0x0;
+        }
+    }
+
+    void disable_joycon_rumble()
+    {
+        int res;
+        unsigned char buf[10];
+
+        memset(buf, 0, sizeof(buf));
+        buf[0] = 0x01;
+        buf[1] = (++global_count) & 0xF;
+        //LEFT
+        buf[2] = 0x00;
+        buf[3] = 0x01;
+        buf[4] = 0x40;
+        buf[5] = 0x40;
+        //RIGHT
+        buf[6] = buf[2];
+        buf[7] = buf[3];
+        buf[8] = buf[4];
+        buf[9] = buf[5];
+        res = hid_write(handle, buf, sizeof(buf));
+
+        if (global_count > 0xF) {
+            global_count = 0x0;
+        }
+
+        memset(buf, 0, sizeof(buf));
+        buf[0] = 0x01;
+        buf[1] = (++global_count) & 0xF;
+        res = hid_write(handle, buf, sizeof(buf));
+        if (global_count > 0xF) {
+            global_count = 0x0;
+        }
+    }
+
+    void set_joycon_rumble(int encLeftLowFreq, int encLeftLowAmpli, int encLeftHighFreq, int encLeftHighAmpli,
+        int encRightLowFreq, int encRightLowAmpli, int encRightHighFreq, int encRightHighAmpli)
+    {
+        unsigned char buf[10];
+        memset(buf, 0, 10);
+        buf[0] = 0x10;
+        buf[1] = (++global_count) & 0xF;
+        //LEFT
+        buf[2] = encLeftHighFreq & 0xff;
+        buf[3] = encLeftHighAmpli + ((encLeftHighFreq >> 8) & 0xff);
+        buf[4] = encLeftLowFreq + ((encLeftLowAmpli >> 8) & 0xff);
+        buf[5] = encLeftLowAmpli & 0xff;
+        //RIGHT
+        buf[6] = encRightHighFreq & 0xff;
+        buf[7] = encRightHighAmpli + ((encRightHighFreq >> 8) & 0xff);
+        buf[8] = encRightLowFreq + ((encRightLowAmpli >> 8) & 0xff);
+        buf[9] = encRightLowAmpli & 0xff;
+
+        if (global_count > 0xF) {
+            global_count = 0x0;
+        }
+
+        hid_write(handle, buf, 10);
+    }
 
 	//// mfosse credits Hypersect (Ryan Juckett), but I've removed deadzones so the consuming application can deal with them
 	//// http://blog.hypersect.com/interpreting-analog-sticks/
@@ -1489,7 +1669,7 @@ public:
 			auto hdr = (brcm_hdr *)buf;
 			auto pkt = (brcm_cmd_01 *)(hdr + 1);
 			hdr->cmd = 1;
-			hdr->rumble[0] = timing_byte;
+			hdr->timer = timing_byte;
 
 			buf[1] = timing_byte;
 
@@ -1497,9 +1677,9 @@ public:
 			if (timing_byte > 0xF) {
 				timing_byte = 0x0;
 			}
-			pkt->subcmd = 0x10;
-			pkt->offset = offset;
-			pkt->size = read_len;
+            pkt->subcmd = 0x10;
+            pkt->spi_data.offset = offset;
+            pkt->spi_data.size = read_len;
 
 			for (int i = 11; i < 22; ++i) {
 				buf[i] = buf[i + 3];
@@ -1535,14 +1715,14 @@ public:
 			auto hdr = (brcm_hdr *)buf;
 			auto pkt = (brcm_cmd_01 *)(hdr + 1);
 			hdr->cmd = 1;
-			hdr->rumble[0] = timing_byte;
+			hdr->timer = timing_byte;
 			timing_byte++;
 			if (timing_byte > 0xF) {
 				timing_byte = 0x0;
 			}
 			pkt->subcmd = 0x11;
-			pkt->offset = offset;
-			pkt->size = write_len;
+            pkt->spi_data.offset = offset;
+            pkt->spi_data.size = write_len;
 			for (int i = 0; i < write_len; i++) {
 				buf[0x10 + i] = test_buf[i];
 			}

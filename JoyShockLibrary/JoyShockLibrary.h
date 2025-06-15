@@ -1,5 +1,7 @@
 // JoyShockLibrary.h - Contains declarations of functions
 #pragma once
+#include <widemath.h>
+#include <vector>
 
 #if _MSC_VER // this is defined when compiling with Visual Studio
 #define JOY_SHOCK_API __declspec(dllexport) // Visual Studio needs annotating exported functions with this
@@ -80,6 +82,14 @@
 #define DS5_PLAYER_4 27
 #define DS5_PLAYER_5 31
 
+#define DS5_TRIGGER_OFF 0x05
+#define DS5_TRIGGER_FEEDBACK 0x21 
+#define DS5_TRIGGER_WEAPON 0x25 
+#define DS5_TRIGGER_VIBRATION 0x26 
+#define DS5_TRIGGER_BOW 0x22
+#define DS5_TRIGGER_GALLOPING 0x23 
+#define DS5_TRIGGER_MACHINE 0x27
+
 typedef struct JOY_SHOCK_STATE {
 	int buttons = 0;
 	float lTrigger = 0.f;
@@ -140,6 +150,91 @@ typedef struct JSL_SETTINGS {
 	bool isConnected = false;
 	char path[256];
 } JSL_SETTINGS;
+
+struct brcm_hdr {
+    uint8_t cmd;
+    uint8_t timer;
+    uint8_t rumble_l[4];
+    uint8_t rumble_r[4];
+};
+
+struct brcm_cmd_01 {
+    uint8_t subcmd;
+    union {
+        struct {
+            uint32_t offset;
+            uint8_t size;
+        } spi_data;
+
+        struct {
+            uint8_t arg1;
+            uint8_t arg2;
+        } subcmd_arg;
+
+        struct {
+            uint8_t mcu_cmd;
+            uint8_t mcu_subcmd;
+            uint8_t mcu_mode;
+        } subcmd_21_21;
+
+        struct {
+            uint8_t  mcu_cmd;
+            uint8_t  mcu_subcmd;
+            uint8_t  no_of_reg;
+            uint16_t reg1_addr;
+            uint8_t  reg1_val;
+            uint16_t reg2_addr;
+            uint8_t  reg2_val;
+            uint16_t reg3_addr;
+            uint8_t  reg3_val;
+            uint16_t reg4_addr;
+            uint8_t  reg4_val;
+            uint16_t reg5_addr;
+            uint8_t  reg5_val;
+            uint16_t reg6_addr;
+            uint8_t  reg6_val;
+            uint16_t reg7_addr;
+            uint8_t  reg7_val;
+            uint16_t reg8_addr;
+            uint8_t  reg8_val;
+            uint16_t reg9_addr;
+            uint8_t  reg9_val;
+        } subcmd_21_23_04;
+
+        struct {
+            uint8_t  mcu_cmd;
+            uint8_t  mcu_subcmd;
+            uint8_t  mcu_ir_mode;
+            uint8_t  no_of_frags;
+            uint16_t mcu_major_v;
+            uint16_t mcu_minor_v;
+        } subcmd_21_23_01;
+    };
+};
+
+
+struct ds5_trigger_effect
+{
+    bool bDirty = false;
+    unsigned char motorMode = 0;
+    unsigned char startResistance = 0;
+    unsigned char effectForce = 0;
+    unsigned char rangeForce = 0;
+    unsigned char nearReleaseStrength = 0;
+    unsigned char nearMiddleStrength = 0;
+    unsigned char pressedStrength = 0;
+    unsigned char P6 = 0;
+    unsigned char P7 = 0;
+    unsigned char actuationFrequency = 0;
+    unsigned char P9 = 0;
+};
+
+enum class EDS5AffectedTriggers
+{
+    Both = 1,
+    Left,
+    Right
+};
 
 extern "C" JOY_SHOCK_API int JslConnectDevices();
 extern "C" JOY_SHOCK_API int JslGetConnectedDeviceHandles(int* deviceHandleArray, int size);
@@ -245,10 +340,116 @@ extern "C" JOY_SHOCK_API int JslGetControllerType(int deviceId);
 // is this a left, right, or full controller?
 extern "C" JOY_SHOCK_API int JslGetControllerSplitType(int deviceId);
 // what colour is the controller (not all controllers support this; those that don't will report white)
-extern "C" JOY_SHOCK_API int JslGetControllerColour(int deviceId);
+extern "C" JOY_SHOCK_API int JslGetControllerBodyColour(int deviceId);
+// what colour is the controller (not all controllers support this; those that don't will report white)
+extern "C" JOY_SHOCK_API int JslGetControllerLeftGripColour(int deviceId);
+// what colour is the controller (not all controllers support this; those that don't will report white)
+extern "C" JOY_SHOCK_API int JslGetControllerRightGripColour(int deviceId);
+// what colour is the controller (not all controllers support this; those that don't will report white)
+extern "C" JOY_SHOCK_API int JslGetControllerButtonColour(int deviceId);
 // set controller light colour (not all controllers have a light whose colour can be set, but that just means nothing will be done when this is called -- no harm)
 extern "C" JOY_SHOCK_API void JslSetLightColour(int deviceId, int colour);
 // set controller rumble
 extern "C" JOY_SHOCK_API void JslSetRumble(int deviceId, int smallRumble, int bigRumble);
+/// <summary>
+/// Turn the trigger effect off and return the trigger stop to the neutral position.
+/// This is an official effect and is expected to be present in future DualSense firmware.
+/// </summary>
+extern "C" JOY_SHOCK_API void JslSetDS5TriggersOff(int deviceId, EDS5AffectedTriggers affectedTriggers);
+/// <summary>
+/// Trigger will resist movement beyond the start position.
+/// This is an official effect and is expected to be present in future DualSense firmware.
+/// </summary>
+/// <param name="position">The starting zone of the trigger effect. Must be between 0 and 9 inclusive.</param>
+/// <param name="strength">The force of the resistance. Must be between 0 and 8 inclusive.</param>
+extern "C" JOY_SHOCK_API void JslSetDS5TriggersFeedback(int deviceId, EDS5AffectedTriggers affectedTriggers, unsigned char position, unsigned char strength);
+/// <summary>
+/// Trigger will resist movement beyond the start position until the end position.
+/// and 2 after until again before the start position.
+/// This is an official effect and is expected to be present in future DualSense firmware.
+/// </summary>
+/// <param name="startPosition">The starting zone of the trigger effect. Must be between 2 and 7 inclusive.</param>
+/// <param name="endPosition">The ending zone of the trigger effect. Must be between <paramref name="startPosition"/>+1 and 8 inclusive.</param>
+/// <param name="strength">The force of the resistance. Must be between 0 and 8 inclusive.</param>
+extern "C" JOY_SHOCK_API void JslSetDS5TriggersWeapon(int deviceId, EDS5AffectedTriggers affectedTriggers, unsigned char startPosition, unsigned char endPosition, unsigned char strength);
+/// <summary>
+/// Trigger will vibrate with the input amplitude and frequency beyond the start position.
+/// This is an official effect and is expected to be present in future DualSense firmware.
+/// </summary>
+/// <param name="position">The starting zone of the trigger effect. Must be between 0 and 9 inclusive.</param>
+/// <param name="amplitude">Strength of the automatic cycling action. Must be between 0 and 8 inclusive.</param>
+/// <param name="frequency">Frequency of the automatic cycling action in hertz.</param>
+extern "C" JOY_SHOCK_API void JslSetDS5TriggersVibration(int deviceId, EDS5AffectedTriggers affectedTriggers, unsigned char position, unsigned char amplitude, unsigned char frequency);
+/// <summary>
+/// Trigger will resist movement at varrying strengths in 10 regions.
+/// This is an official effect and is expected to be present in future DualSense firmware.
+/// </summary>
+/// <seealso cref="JslSetDS5TriggersFeedback(int, EDS5AffectedTriggers, unsigned char, unsigned char)"/>
+/// <param name="strength">Array of 10 resistance values for zones 0 through 9. Must be between 0 and 8 inclusive.</param>
+/// <returns>The success of the effect write.</returns>
+extern "C" JOY_SHOCK_API void JslSetDS5TriggersMultiPosFeedback(int deviceId, EDS5AffectedTriggers affectedTriggers, const std::vector<unsigned char>& strength);
+/// <summary>
+/// Trigger will resist movement at a linear range of strengths.
+/// This is an official effect and is expected to be present in future DualSense firmware.
+/// </summary>
+/// <seealso cref="JslSetDS5TriggersFeedback(int, EDS5AffectedTriggers, unsigned char, unsigned char)"/>
+/// <param name="startPosition">The starting zone of the trigger effect. Must be between 0 and 8 inclusive.</param>
+/// <param name="endPosition">The ending zone of the trigger effect. Must be between <paramref name="startPosition"/>+1 and 9 inclusive.</param>
+/// <param name="startStrength">The force of the resistance at the start. Must be between 1 and 8 inclusive.</param>
+/// <param name="endStrength">The force of the resistance at the end. Must be between 1 and 8 inclusive.</param>
+extern "C" JOY_SHOCK_API void JslSetDS5TriggersSlopeFeedback(int deviceId, EDS5AffectedTriggers affectedTriggers, unsigned char startPosition, unsigned char endPosition,
+    unsigned char startStrength, unsigned char endStrength);
+/// <summary>
+/// Trigger will vibrate movement at varrying amplitudes and one frequency in 10 regions.
+/// This is an official effect and is expected to be present in future DualSense firmware.
+/// </summary>
+/// <remarks>
+/// Note this factory's results may not perform as expected.
+/// </remarks>
+/// <seealso cref="JslSetDS5TriggersVibration(int, EDS5AffectedTriggers, unsigned char, unsigned char, unsigned char)"/>
+/// <param name="frequency">Frequency of the automatic cycling action in hertz.</param>
+/// <param name="amplitude">Array of 10 strength values for zones 0 through 9. Must be between 0 and 8 inclusive.</param>
+extern "C" JOY_SHOCK_API void JslSetDS5TriggersMultiPosVibration(int deviceId, EDS5AffectedTriggers affectedTriggers, unsigned char frequency, const std::vector<unsigned char>& amplitude);
+/// <summary>
+/// The effect resembles the <see cref="JslSetDS5TriggersWeapon(int, EDS5AffectedTriggers, unsigned char, unsigned char, unsigned char)">JslSetDS5TriggersWeapon</see>
+/// effect, however there is a snap-back force that attempts to reset the trigger.
+/// This is not an official effect and may be removed in a future DualSense firmware.
+/// </summary>
+/// <param name="startPosition">The starting zone of the trigger effect. Must be between 0 and 8 inclusive.</param>
+/// <param name="endPosition">The ending zone of the trigger effect. Must be between <paramref name="startPosition"/>+1 and 8 inclusive.</param>
+/// <param name="strength">The force of the resistance. Must be between 0 and 8 inclusive.</param>
+/// <param name="snapForce">The force of the snap-back. Must be between 0 and 8 inclusive.</param>
+extern "C" JOY_SHOCK_API void JslSetDS5TriggersBow(int deviceId, EDS5AffectedTriggers affectedTriggers, unsigned char startPosition, unsigned char endPosition,
+    unsigned char strength, unsigned char snapForce);
+/// <summary>
+/// Trigger will oscillate in a rythmic pattern resembling galloping. Note that the
+/// effect is only discernable at low frequency values.
+/// This is not an official effect and may be removed in a future DualSense firmware.
+/// </summary>
+/// <param name="startPosition">The starting zone of the trigger effect. Must be between 0 and 8 inclusive.</param>
+/// <param name="endPosition">The ending zone of the trigger effect. Must be between <paramref name="startPosition"/>+1 and 9 inclusive.</param>
+/// <param name="firstFoot">Position of first foot in cycle. Must be between 0 and 6 inclusive.</param>
+/// <param name="secondFoot">Position of second foot in cycle. Must be between <paramref name="firstFoot"/>+1 and 7 inclusive.</param>
+/// <param name="frequency">Frequency of the automatic cycling action in hertz.</param>
+extern "C" JOY_SHOCK_API void JslSetDS5TriggersGalloping(int deviceId, EDS5AffectedTriggers affectedTriggers, unsigned char startPosition, unsigned char endPosition,
+    unsigned char firstFoot, unsigned char secondFoot, unsigned char frequency);
+/// <summary>
+/// This effect resembles <see cref="JslSetDS5TriggersVibration(int, EDS5AffectedTriggers, unsigned char, unsigned char, unsigned char)">JslSetDS5TriggersVibration</see>
+/// but will oscilate between two amplitudes.
+/// This is not an official effect and may be removed in a future DualSense firmware.
+/// </summary>
+/// <param name="startPosition">The starting zone of the trigger effect. Must be between 0 and 8 inclusive.</param>
+/// <param name="endPosition">The ending zone of the trigger effect. Must be between <paramref name="startPosition"/> and 9 inclusive.</param>
+/// <param name="amplitudeA">Primary strength of cycling action. Must be between 0 and 7 inclusive.</param>
+/// <param name="amplitudeB">Secondary strength of cycling action. Must be between 0 and 7 inclusive.</param>
+/// <param name="frequency">Frequency of the automatic cycling action in hertz.</param>
+/// <param name="period">Period of the oscillation between <paramref name="amplitudeA"/> and <paramref name="amplitudeB"/> in tenths of a second.</param>
+extern "C" JOY_SHOCK_API void JslSetDS5TriggersMachine(int deviceId, EDS5AffectedTriggers affectedTriggers, unsigned char startPosition, unsigned char endPosition,
+    unsigned char amplitudeA, unsigned char amplitudeB, unsigned char frequency, unsigned char period);
+
+extern "C" JOY_SHOCK_API void JslEnableHDRumble(int deviceId);
+extern "C" JOY_SHOCK_API void JslDisableHDRumble(int deviceId);
+extern "C" JOY_SHOCK_API void JslSetHDRumble(int deviceId, float lowFreq, float lowAmpli, float highFreq, float highAmpli);
+extern "C" JOY_SHOCK_API void JslSetHDRumbleLR(int deviceId, float lowFreq_L, float lowAmpli_L, float highFreq_L, float highAmpli_L, float lowFreq_R, float lowAmpli_R, float highFreq_R, float highAmpli_R);
 // set controller player number indicator (not all controllers have a number indicator which can be set, but that just means nothing will be done when this is called -- no harm)
 extern "C" JOY_SHOCK_API void JslSetPlayerNumber(int deviceId, int number);

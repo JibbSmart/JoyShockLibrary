@@ -155,7 +155,13 @@ JslSetGyroSpace lets you choose one of those spaces, and the transformation will
   2. Right half
   3. Full controller
 
-**int JslGetControllerColour(int deviceId)** - Get the colour of the controller. Only Nintendo devices support this. Others will report white.
+**int JslGetControllerBodyColour(int deviceId)** - Get the colour of the body. Only Nintendo devices support this. Others will report white.
+
+**int JslGetControllerLeftGripColour(int deviceId)** - Get the colour of the Pro Controller's left grip. Only Pro Controller supports this. Others will report white.
+
+**int JslGetControllerRightGripColour(int deviceId)** - Get the colour of the Pro Controller's right grip. Only Pro Controller supports this. Others will report white.
+
+**int JslGetControllerButtonColour(int deviceId)** - Get the colour of the buttons. Only Nintendo devices support this. Others will report white.
 
 **void JslSetLightColour(int deviceId, int colour)** - Set the light colour on the given controller. Only DualShock 4 and the DualSense support this. Players will often prefer to be able to disable the light, so make sure to give them that option, but when setting players up in a local multiplayer game, setting the light colour is a useful way to uniquely identify different controllers.
 
@@ -167,7 +173,31 @@ Player 3: ```x-x-x```
 Player 4: ```xx-xx```
 Player 5: ```xxxxx```
 
-**void JslSetRumble(int deviceId, int smallRumble, int bigRumble)** - DualShock 4s have two types of rumble, and they can be set at the same time with different intensities. These can be set from 0 to 255. Nintendo devices support rumble as well, but totally differently. They call it "HD rumble", and it's a great feature, but JoyShockLibrary doesn't yet support it.
+**void JslSetRumble(int deviceId, int smallRumble, int bigRumble)** - DualShock 4s have two types of rumble, and they can be set at the same time with different intensities. These can be set from 0 to 255. Nintendo devices support rumble as well, but totally differently. They call it "HD rumble", and it's a great feature, this is true.
+
+**void JslSetHDRumble(int deviceId, float lowFreq, float lowAmpli, float highFreq, float highAmpli)** - Nintendo devices support rumble but is done in a totally different way. Instead of sending a force value from 0 to 255, you have to send the frequency in hertz and amplitude.
+
+**void JslDisableHDRumble(int deviceId)** - Disable rumble on Nintendo devices.
+
+**void JslSetDS5TriggersOff(int deviceId, EDS5AffectedTriggers affectedTriggers)** - Dualsense triggers have motors which can give different feedback to the player, like vibrate like a gun when pressing them, or requiring more force to pull them. This function turns these effects off.
+
+**void JslSetDS5TriggersFeedback(int deviceId, EDS5AffectedTriggers affectedTriggers, unsigned char position, unsigned char strength)** - Trigger will resist movement beyond the start position. This is an official effect and is expected to be present in future DualSense firmware. Position is the starting zone of the trigger effect, must be between 0 and 9 inclusive. Strength is the force of the resistance, must be between 0 and 8 inclusive.
+
+**void JslSetDS5TriggersWeapon(int deviceId, EDS5AffectedTriggers affectedTriggers, unsigned char startPosition, unsigned char endPosition, unsigned char strength)** - Trigger will resist movement beyond the start position until the end position. This is an official effect and is expected to be present in future DualSense firmware. StartPosition is the starting zone of the trigger effect, must be between 2 and 7 inclusive. EndPosition is the ending zone of the trigger effect. Must be between startPosition+1 and 8 inclusive. Strength is the force of the resistance, must be between 0 and 8 inclusive.
+
+**void JslSetDS5TriggersVibration(int deviceId, EDS5AffectedTriggers affectedTriggers, unsigned char position, unsigned char amplitude, unsigned char frequency)** - Trigger will vibrate with the input amplitude and frequency beyond the start position. This is an official effect and is expected to be present in future DualSense firmware. Position is the starting zone of the trigger effect, must be between 0 and 9 inclusive. Amplitude is the strength of the automatic cycling action, must be between 0 and 8 inclusive. Frequency is the frequency of the automatic cycling action in hertz.
+
+**void JslSetDS5TriggersMultiPosFeedback(int deviceId, EDS5AffectedTriggers affectedTriggers, std::vector<unsigned char> strength)** - Trigger will resist movement at varrying strengths in 10 regions. This is an official effect and is expected to be present in future DualSense firmware. Strength is an array of 10 resistance values for zones 0 through 9, must be between 0 and 8 inclusive.
+
+**void JslSetDS5TriggersSlopeFeedback(int deviceId, EDS5AffectedTriggers affectedTriggers, unsigned char startPosition, unsigned char endPosition, unsigned char startStrength, unsigned char endStrength)** - Trigger will resist movement at a linear range of strengths. This is an official effect and is expected to be present in future DualSense firmware. StartPosition is the starting zone of the trigger effect, must be between 2 and 7 inclusive. EndPosition is the ending zone of the trigger effect. Must be between startPosition+1 and 8 inclusive. StartStrength is the force of the resistance at the start, must be between 1 and 8 inclusive. EndStrength is the force of the resistance at the end, must be between 1 and 8 inclusive.
+
+**void JslSetDS5TriggersMultiPosVibration(int deviceId, EDS5AffectedTriggers affectedTriggers, unsigned char frequency, std::vector<unsigned char> amplitude)** - Trigger will vibrate movement at varrying amplitudes and one frequency in 10 regions. This is an official effect and is expected to be present in future DualSense firmware. Frequency is the frequency of the automatic cycling action in hertz. Amplitude is an array of 10 strength values for zones 0 through 9, must be between 0 and 8 inclusive.
+
+**void JslSetDS5TriggersBow(int deviceId, EDS5AffectedTriggers affectedTriggers, unsigned char startPosition, unsigned char endPosition, unsigned char strength, unsigned char snapForce)** - The effect resembles the JslSetDS5TriggersWeapon effect, however there is a snap-back force that attempts to reset the trigger. This is not an official effect and may be removed in a future DualSense firmware. StartPosition is the starting zone of the trigger effect, must be between 2 and 7 inclusive. EndPosition is the ending zone of the trigger effect, must be between startPosition+1 and 8 inclusive. Strength is the force of the resistance, must be between 0 and 8 inclusive. SnapForce is the force of the snap-back, must be between 0 and 8 inclusive.
+
+**void JslSetDS5TriggersGalloping(int deviceId, EDS5AffectedTriggers affectedTriggers, unsigned char startPosition, unsigned char endPosition, unsigned char firstFoot, unsigned char secondFoot, unsigned char frequency)** - Trigger will oscillate in a rythmic pattern resembling galloping. Note that the effect is only discernable at low frequency values. This is not an official effect and may be removed in a future DualSense firmware. StartPosition is the starting zone of the trigger effect, must be between 2 and 7 inclusive. EndPosition is the ending zone of the trigger effect, must be between startPosition+1 and 8 inclusive. FirstFoot is the position of first foot in cycle, must be between 0 and 6 inclusive. SecondFoot is the position of second foot in cycle, must be between firstFoot+1 and 7 inclusive. Frequency is the frequency of the automatic cycling action in hertz.
+
+**void JslSetDS5TriggersMachine(int deviceId, EDS5AffectedTriggers affectedTriggers, unsigned char startPosition, unsigned char endPosition, unsigned char amplitudeA, unsigned char amplitudeB, unsigned char frequency, unsigned char period)** - This effect resembles JslSetDS5TriggersVibration but will oscilate between two amplitudes. This is not an official effect and may be removed in a future DualSense firmware. StartPosition is the starting zone of the trigger effect, must be between 2 and 7 inclusive. EndPosition is the ending zone of the trigger effect, must be between startPosition+1 and 8 inclusive. AmplitudeA is the primary strength of the automatic cycling action, must be between 0 and 7 inclusive. AmplitudeB is the secondary strength of the automatic cycling action, must be between 0 and 7 inclusive. Frequency is the frequency of the automatic cycling action in hertz. Period is the period of the ocillation between amplitudeA and amplitude B in tenths of a second.
 
 ## Known and Perceived Issues
 ### Bluetooth connectivity

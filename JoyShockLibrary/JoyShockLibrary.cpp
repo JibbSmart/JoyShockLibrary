@@ -1101,7 +1101,7 @@ int JslGetControllerSplitType(int deviceId)
 	return 0;
 }
 // what colour is the controller (not all controllers support this; those that don't will report white)
-int JslGetControllerColour(int deviceId)
+int JslGetControllerBodyColour(int deviceId)
 {
 	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
 	// this just reports body colour. Switch controllers also give buttons colour, and in Pro's case, left and right grips
@@ -1111,6 +1111,40 @@ int JslGetControllerColour(int deviceId)
 	}
 	return 0xFFFFFF;
 }
+// what colour is the controller (not all controllers support this; those that don't will report white)
+int JslGetControllerLeftGripColour(int deviceId)
+{
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
+	// this just reports body colour. Switch controllers also give buttons colour, and in Pro's case, left and right grips
+	JoyShock* jc = GetJoyShockFromHandle(deviceId);
+	if (jc != nullptr) {
+		return jc->left_grip_colour;
+	}
+	return 0xFFFFFF;
+}
+// what colour is the controller (not all controllers support this; those that don't will report white)
+int JslGetControllerRightGripColour(int deviceId)
+{
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
+	// this just reports body colour. Switch controllers also give buttons colour, and in Pro's case, left and right grips
+	JoyShock* jc = GetJoyShockFromHandle(deviceId);
+	if (jc != nullptr) {
+		return jc->right_grip_colour;
+	}
+	return 0xFFFFFF;
+}
+// what colour is the controller (not all controllers support this; those that don't will report white)
+int JslGetControllerButtonColour(int deviceId)
+{
+	std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
+	// this just reports body colour. Switch controllers also give buttons colour, and in Pro's case, left and right grips
+	JoyShock* jc = GetJoyShockFromHandle(deviceId);
+	if (jc != nullptr) {
+		return jc->button_colour;
+	}
+	return 0xFFFFFF;
+}
+
 // set controller light colour (not all controllers have a light whose colour can be set, but that just means nothing will be done when this is called -- no harm)
 void JslSetLightColour(int deviceId, int colour)
 {
@@ -1144,6 +1178,7 @@ void JslSetLightColour(int deviceId, int colour)
 		jc->modifying_lock.unlock();
 	}
 }
+
 // set controller rumble
 void JslSetRumble(int deviceId, int smallRumble, int bigRumble)
 {
@@ -1175,6 +1210,704 @@ void JslSetRumble(int deviceId, int smallRumble, int bigRumble)
 		jc->modifying_lock.unlock();
     }
 }
+
+void JslSetDS5TriggersOff(int deviceId, EDS5AffectedTriggers affectedTriggers)
+{
+    std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
+    JoyShock* jc = GetJoyShockFromHandle(deviceId);
+    if (jc != nullptr && jc->controller_type == ControllerType::s_ds) {
+        ds5_trigger_effect leftTrigger, rightTrigger;
+        if (affectedTriggers == EDS5AffectedTriggers::Both || affectedTriggers == EDS5AffectedTriggers::Left)
+        {
+            leftTrigger.bDirty = true;
+            leftTrigger.motorMode = DS5_TRIGGER_OFF;
+            leftTrigger.startResistance = 0x00;
+            leftTrigger.effectForce = 0x00;
+            leftTrigger.rangeForce = 0x00;
+            leftTrigger.nearReleaseStrength = 0x00;
+            leftTrigger.nearMiddleStrength = 0x00;
+            leftTrigger.pressedStrength = 0x00;
+            leftTrigger.P6 = 0x00;
+            leftTrigger.P7 = 0x00;
+            leftTrigger.actuationFrequency = 0x00;
+            leftTrigger.P9 = 0x00;
+        }
+        if (affectedTriggers == EDS5AffectedTriggers::Both || affectedTriggers == EDS5AffectedTriggers::Right)
+        {
+			rightTrigger.bDirty = true;
+            rightTrigger.motorMode = DS5_TRIGGER_OFF;
+            rightTrigger.startResistance = 0x00;
+            rightTrigger.effectForce = 0x00;
+            rightTrigger.rangeForce = 0x00;
+            rightTrigger.nearReleaseStrength = 0x00;
+            rightTrigger.nearMiddleStrength = 0x00;
+            rightTrigger.pressedStrength = 0x00;
+            rightTrigger.P6 = 0x00;
+            rightTrigger.P7 = 0x00;
+            rightTrigger.actuationFrequency = 0x00;
+            rightTrigger.P9 = 0x00;
+        }
+        jc->modifying_lock.lock();
+
+		jc->set_ds5_trigger_effects(leftTrigger, rightTrigger);
+
+        jc->modifying_lock.unlock();
+    }
+}
+
+void JslSetDS5TriggersFeedback(int deviceId, EDS5AffectedTriggers affectedTriggers, unsigned char position, unsigned char strength)
+{
+    std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
+    JoyShock* jc = GetJoyShockFromHandle(deviceId);
+    if (jc != nullptr && jc->controller_type == ControllerType::s_ds) 
+	{
+		if (position < 0)
+			position = 0;
+        if (position > 9)
+            position = 9;
+        if (strength < 1)
+            strength = 1;
+        if (strength > 8)
+            strength = 8;
+
+        unsigned char forceValue = ((strength - 1) & 0x07);
+        unsigned int forceZones = 0;
+        unsigned short activeZones = 0;
+        for (int i = position; i < 10; i++)
+        {
+            forceZones = forceZones | (forceValue << (3 * i));
+            activeZones = activeZones | (1 << i);
+        }
+
+		
+        ds5_trigger_effect leftTrigger, rightTrigger;
+        if (affectedTriggers == EDS5AffectedTriggers::Both || affectedTriggers == EDS5AffectedTriggers::Left)
+        {
+			leftTrigger.bDirty = true;
+            leftTrigger.motorMode = DS5_TRIGGER_FEEDBACK;
+            leftTrigger.startResistance = (activeZones >> 0) & 0xff;
+			leftTrigger.effectForce = (activeZones >> 8) & 0xff;
+			leftTrigger.rangeForce = (forceZones >> 0) & 0xff;
+			leftTrigger.nearReleaseStrength = (forceZones >> 8) & 0xff;
+			leftTrigger.nearMiddleStrength = (forceZones >> 16) & 0xff;
+			leftTrigger.pressedStrength = (forceZones >> 24) & 0xff;
+            leftTrigger.P6 = 0x00;
+            leftTrigger.P7 = 0x00;
+            leftTrigger.actuationFrequency = 0x00;
+            leftTrigger.P9 = 0x00;
+        }
+        if (affectedTriggers == EDS5AffectedTriggers::Both || affectedTriggers == EDS5AffectedTriggers::Right)
+        {
+            rightTrigger.bDirty = true;
+            rightTrigger.motorMode = DS5_TRIGGER_FEEDBACK;
+            rightTrigger.startResistance = (activeZones >> 0) & 0xff;
+            rightTrigger.effectForce = (activeZones >> 8) & 0xff;
+            rightTrigger.rangeForce = (forceZones >> 0) & 0xff;
+            rightTrigger.nearReleaseStrength = (forceZones >> 8) & 0xff;
+            rightTrigger.nearMiddleStrength = (forceZones >> 16) & 0xff;
+            rightTrigger.pressedStrength = (forceZones >> 24) & 0xff;
+            rightTrigger.P6 = 0x00;
+            rightTrigger.P7 = 0x00;
+            rightTrigger.actuationFrequency = 0x00;
+            rightTrigger.P9 = 0x00;
+        }
+        jc->modifying_lock.lock();
+
+        jc->set_ds5_trigger_effects(leftTrigger, rightTrigger);
+
+        jc->modifying_lock.unlock();
+
+    }
+
+}
+
+void JslSetDS5TriggersWeapon(int deviceId, EDS5AffectedTriggers affectedTriggers, unsigned char startPosition, unsigned char endPosition, unsigned char strength)
+{
+    std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
+    JoyShock* jc = GetJoyShockFromHandle(deviceId);
+    if (jc != nullptr && jc->controller_type == ControllerType::s_ds)
+    {
+        if (startPosition < 2)
+            startPosition = 2;
+        if (startPosition > 7)
+            startPosition = 7;
+        if (endPosition <= startPosition)
+			endPosition = startPosition + 1;
+        if (endPosition > 8)
+			endPosition = 8;
+        if (strength < 1)
+            strength = 1;
+        if (strength > 8)
+            strength = 8;
+
+        unsigned int startAndStopZones = (1 << startPosition) | (1 << endPosition);
+
+        ds5_trigger_effect leftTrigger, rightTrigger;
+        if (affectedTriggers == EDS5AffectedTriggers::Both || affectedTriggers == EDS5AffectedTriggers::Left)
+        {
+            leftTrigger.bDirty = true;
+            leftTrigger.motorMode = DS5_TRIGGER_WEAPON;
+            leftTrigger.startResistance = (startAndStopZones >> 0) & 0xff;
+            leftTrigger.effectForce = (startAndStopZones >> 8) & 0xff;
+            leftTrigger.rangeForce = strength - 1;
+            leftTrigger.nearReleaseStrength = 0x00;
+            leftTrigger.nearMiddleStrength = 0x00;
+            leftTrigger.pressedStrength = 0x00;
+            leftTrigger.P6 = 0x00;
+            leftTrigger.P7 = 0x00;
+            leftTrigger.actuationFrequency = 0x00;
+            leftTrigger.P9 = 0x00;
+        }
+        if (affectedTriggers == EDS5AffectedTriggers::Both || affectedTriggers == EDS5AffectedTriggers::Right)
+        {
+			rightTrigger.bDirty = true;
+            rightTrigger.motorMode = DS5_TRIGGER_WEAPON;
+            rightTrigger.startResistance = (startAndStopZones >> 0) & 0xff;
+            rightTrigger.effectForce = (startAndStopZones >> 8) & 0xff;
+            rightTrigger.rangeForce = strength - 1;
+            rightTrigger.nearReleaseStrength = 0x00;
+            rightTrigger.nearMiddleStrength = 0x00;
+            rightTrigger.pressedStrength = 0x00;
+            rightTrigger.P6 = 0x00;
+            rightTrigger.P7 = 0x00;
+            rightTrigger.actuationFrequency = 0x00;
+            rightTrigger.P9 = 0x00;
+        }
+        jc->modifying_lock.lock();
+
+        jc->set_ds5_trigger_effects(leftTrigger, rightTrigger);
+
+        jc->modifying_lock.unlock();
+
+    }
+
+}
+
+void JslSetDS5TriggersVibration(int deviceId, EDS5AffectedTriggers affectedTriggers, unsigned char position, unsigned char amplitude, unsigned char frequency)
+{
+    std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
+    JoyShock* jc = GetJoyShockFromHandle(deviceId);
+    if (jc != nullptr && jc->controller_type == ControllerType::s_ds)
+    {
+        if (position < 0)
+            position = 0;
+        if (position > 9)
+            position = 9;
+        if (amplitude < 1)
+			amplitude = 1;
+        if (amplitude > 8)
+            amplitude = 8;
+        if (frequency < 0)
+			frequency = 0;
+
+        unsigned char strengthValue = (amplitude - 1) & 0x07;
+        unsigned int amplitudeZones = 0;
+        unsigned short activeZones = 0;
+        for (int i = position; i < 10; i++)
+        {
+            amplitudeZones = amplitudeZones | (strengthValue << (3 * i));
+            activeZones = activeZones | (1 << i);
+        }
+
+        ds5_trigger_effect leftTrigger, rightTrigger;
+        if (affectedTriggers == EDS5AffectedTriggers::Both || affectedTriggers == EDS5AffectedTriggers::Left)
+        {
+            leftTrigger.bDirty = true;
+            leftTrigger.motorMode = DS5_TRIGGER_VIBRATION;
+            leftTrigger.startResistance = (activeZones >> 0) & 0xff;
+			leftTrigger.effectForce = (activeZones >> 8) & 0xff;
+			leftTrigger.rangeForce = (amplitudeZones >> 0) & 0xff;
+			leftTrigger.nearReleaseStrength = (amplitudeZones >> 8) & 0xff;
+			leftTrigger.nearMiddleStrength = (amplitudeZones >> 16) & 0xff;
+			leftTrigger.pressedStrength = (amplitudeZones >> 24) & 0xff;
+            leftTrigger.P6 = 0x00;
+            leftTrigger.P7 = 0x00;
+            leftTrigger.actuationFrequency = frequency;
+            leftTrigger.P9 = 0x00;
+        }
+        if (affectedTriggers == EDS5AffectedTriggers::Both || affectedTriggers == EDS5AffectedTriggers::Right)
+        {
+            rightTrigger.bDirty = true;
+            rightTrigger.motorMode = DS5_TRIGGER_VIBRATION;
+            rightTrigger.startResistance = (activeZones >> 0) & 0xff;
+            rightTrigger.effectForce = (activeZones >> 8) & 0xff;
+            rightTrigger.rangeForce = (amplitudeZones >> 0) & 0xff;
+            rightTrigger.nearReleaseStrength = (amplitudeZones >> 8) & 0xff;
+            rightTrigger.nearMiddleStrength = (amplitudeZones >> 16) & 0xff;
+            rightTrigger.pressedStrength = (amplitudeZones >> 24) & 0xff;
+            rightTrigger.P6 = 0x00;
+            rightTrigger.P7 = 0x00;
+            rightTrigger.actuationFrequency = frequency;
+            rightTrigger.P9 = 0x00;
+        }
+        jc->modifying_lock.lock();
+
+        jc->set_ds5_trigger_effects(leftTrigger, rightTrigger);
+
+        jc->modifying_lock.unlock();
+
+    }
+}
+
+void JslSetDS5TriggersMultiPosFeedback(int deviceId, EDS5AffectedTriggers affectedTriggers, const std::vector<unsigned char>& strength)
+{
+    std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
+    JoyShock* jc = GetJoyShockFromHandle(deviceId);
+    if (jc != nullptr && jc->controller_type == ControllerType::s_ds)
+    {
+		if (strength.size() == 0)
+		{
+			JslSetDS5TriggersOff(deviceId, affectedTriggers);
+			return;
+		}
+
+		unsigned int forceZones = 0;
+		unsigned short activeZones = 0;
+		for (int i = 0; i < 10; i++)
+		{
+			unsigned char currentStrength;
+			if(strength.size() <= i) currentStrength = 0;
+			else currentStrength = strength[i];
+
+			unsigned char forceValue = (currentStrength - 1) & 0x07;
+			forceZones = forceZones | (forceValue << (3 * i));
+			activeZones = activeZones | (1 << i);
+		}
+
+		ds5_trigger_effect leftTrigger, rightTrigger;
+		if (affectedTriggers == EDS5AffectedTriggers::Both || affectedTriggers == EDS5AffectedTriggers::Left)
+		{
+			leftTrigger.bDirty = true;
+			leftTrigger.motorMode = DS5_TRIGGER_FEEDBACK;
+			leftTrigger.startResistance = (activeZones >> 0) & 0xff;
+			leftTrigger.effectForce = (activeZones >> 8) & 0xff;
+			leftTrigger.rangeForce = (forceZones >> 0) & 0xff;
+			leftTrigger.nearReleaseStrength = (forceZones >> 8) & 0xff;
+			leftTrigger.nearMiddleStrength = (forceZones >> 16) & 0xff;
+			leftTrigger.pressedStrength = (forceZones >> 24) & 0xff;
+			leftTrigger.P6 = 0x00;
+			leftTrigger.P7 = 0x00;
+			leftTrigger.actuationFrequency = 0x00;
+			leftTrigger.P9 = 0x00;
+		}
+		if (affectedTriggers == EDS5AffectedTriggers::Both || affectedTriggers == EDS5AffectedTriggers::Right)
+		{
+			rightTrigger.bDirty = true;
+			rightTrigger.motorMode = DS5_TRIGGER_FEEDBACK;
+			rightTrigger.startResistance = (activeZones >> 0) & 0xff;
+			rightTrigger.effectForce = (activeZones >> 8) & 0xff;
+			rightTrigger.rangeForce = (forceZones >> 0) & 0xff;
+			rightTrigger.nearReleaseStrength = (forceZones >> 8) & 0xff;
+			rightTrigger.nearMiddleStrength = (forceZones >> 16) & 0xff;
+			rightTrigger.pressedStrength = (forceZones >> 24) & 0xff;
+			rightTrigger.P6 = 0x00;
+			rightTrigger.P7 = 0x00;
+			rightTrigger.actuationFrequency = 0x00;
+			rightTrigger.P9 = 0x00;
+		}
+		jc->modifying_lock.lock();
+
+		jc->set_ds5_trigger_effects(leftTrigger, rightTrigger);
+
+		jc->modifying_lock.unlock();
+	}
+}
+
+void JslSetDS5TriggersSlopeFeedback(int deviceId, EDS5AffectedTriggers affectedTriggers, unsigned char startPosition, unsigned char endPosition, unsigned char startStrength, unsigned char endStrength)
+{
+    std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
+    JoyShock* jc = GetJoyShockFromHandle(deviceId);
+    if (jc != nullptr && jc->controller_type == ControllerType::s_ds)
+    {
+        if (startPosition < 2)
+            startPosition = 2;
+        if (startPosition > 7)
+            startPosition = 7;
+        if (endPosition <= startPosition)
+            endPosition = startPosition + 1;
+        if (endPosition > 8)
+            endPosition = 8;
+        if (startStrength < 1)
+			startStrength = 1;
+        if (startStrength > 8)
+			startStrength = 8;
+        if (endStrength < 1)
+			endStrength = 1;
+        if (endStrength > 8)
+			endStrength = 8;
+
+        std::vector<unsigned char> strength;
+        float slope = 1.0f * (endStrength - startStrength) / (endPosition - startPosition);
+        for (unsigned int i = startPosition; i < 10; i++)
+		{
+            if (i <= endPosition)
+			{
+                strength.push_back(static_cast<unsigned char>(std::lround(startStrength + slope * (i - startPosition))));
+			}
+            else
+            {
+                strength.push_back(endStrength);
+			}
+		}
+
+		JslSetDS5TriggersMultiPosFeedback(deviceId, affectedTriggers, strength);
+    }
+}
+
+void JslSetDS5TriggersMultiPosVibration(int deviceId, EDS5AffectedTriggers affectedTriggers, unsigned char frequency, const std::vector<unsigned char>& amplitude)
+{
+    std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
+    JoyShock* jc = GetJoyShockFromHandle(deviceId);
+    if (jc != nullptr && jc->controller_type == ControllerType::s_ds)
+    {
+        if (amplitude.size() == 0)
+        {
+            JslSetDS5TriggersOff(deviceId, affectedTriggers);
+            return;
+        }
+
+        unsigned int strengthZones = 0;
+        unsigned short activeZones = 0;
+        for (int i = 0; i < 10; i++)
+        {
+            unsigned char currentAmplitude;
+            if (amplitude.size() <= i) currentAmplitude = 0;
+            else currentAmplitude = amplitude[i];
+
+            unsigned char strengthValue = (currentAmplitude - 1) & 0x07;
+			strengthZones = strengthZones | (strengthValue << (3 * i));
+            activeZones = activeZones | (1 << i);
+        }
+
+        ds5_trigger_effect leftTrigger, rightTrigger;
+        if (affectedTriggers == EDS5AffectedTriggers::Both || affectedTriggers == EDS5AffectedTriggers::Left)
+        {
+            leftTrigger.bDirty = true;
+            leftTrigger.motorMode = DS5_TRIGGER_VIBRATION;
+            leftTrigger.startResistance = (activeZones >> 0) & 0xff;
+            leftTrigger.effectForce = (activeZones >> 8) & 0xff;
+            leftTrigger.rangeForce = (strengthZones >> 0) & 0xff;
+            leftTrigger.nearReleaseStrength = (strengthZones >> 8) & 0xff;
+            leftTrigger.nearMiddleStrength = (strengthZones >> 16) & 0xff;
+            leftTrigger.pressedStrength = (strengthZones >> 24) & 0xff;
+            leftTrigger.P6 = 0x00;
+            leftTrigger.P7 = 0x00;
+            leftTrigger.actuationFrequency = frequency;
+            leftTrigger.P9 = 0x00;
+        }
+        if (affectedTriggers == EDS5AffectedTriggers::Both || affectedTriggers == EDS5AffectedTriggers::Right)
+        {
+            rightTrigger.bDirty = true;
+            rightTrigger.motorMode = DS5_TRIGGER_VIBRATION;
+            rightTrigger.startResistance = (activeZones >> 0) & 0xff;
+            rightTrigger.effectForce = (activeZones >> 8) & 0xff;
+            rightTrigger.rangeForce = (strengthZones >> 0) & 0xff;
+            rightTrigger.nearReleaseStrength = (strengthZones >> 8) & 0xff;
+            rightTrigger.nearMiddleStrength = (strengthZones >> 16) & 0xff;
+            rightTrigger.pressedStrength = (strengthZones >> 24) & 0xff;
+            rightTrigger.P6 = 0x00;
+            rightTrigger.P7 = 0x00;
+            rightTrigger.actuationFrequency = frequency;
+            rightTrigger.P9 = 0x00;
+        }
+        jc->modifying_lock.lock();
+
+        jc->set_ds5_trigger_effects(leftTrigger, rightTrigger);
+
+        jc->modifying_lock.unlock();
+    }
+}
+
+void JslSetDS5TriggersBow(int deviceId, EDS5AffectedTriggers affectedTriggers, unsigned char startPosition, unsigned char endPosition, unsigned char strength, unsigned char snapForce)
+{
+    std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
+    JoyShock* jc = GetJoyShockFromHandle(deviceId);
+    if (jc != nullptr && jc->controller_type == ControllerType::s_ds)
+    {
+        if (startPosition < 2)
+            startPosition = 2;
+        if (startPosition > 7)
+            startPosition = 7;
+        if (endPosition <= startPosition)
+            endPosition = startPosition + 1;
+        if (endPosition > 8)
+            endPosition = 8;
+        if (strength < 1)
+            strength = 1;
+        if (strength > 8)
+            strength = 8;
+
+
+        unsigned short startAndStopZones = (1 << startPosition) | (1 << endPosition);
+        unsigned int forcePair = (((strength - 1) & 0x07) << (3 * 0)) | (((snapForce - 1) & 0x07) << (3 * 1));
+
+
+        ds5_trigger_effect leftTrigger, rightTrigger;
+        if (affectedTriggers == EDS5AffectedTriggers::Both || affectedTriggers == EDS5AffectedTriggers::Left)
+        {
+            leftTrigger.bDirty = true;
+            leftTrigger.motorMode = DS5_TRIGGER_BOW;
+            leftTrigger.startResistance = (startAndStopZones >> 0) & 0xff;
+            leftTrigger.effectForce = (startAndStopZones >> 8) & 0xff;
+            leftTrigger.rangeForce = (forcePair >> 0) & 0xff;
+            leftTrigger.nearReleaseStrength = (forcePair >> 8) & 0xff;
+            leftTrigger.nearMiddleStrength = 0x00;
+            leftTrigger.pressedStrength = 0x00;
+            leftTrigger.P6 = 0x00;
+            leftTrigger.P7 = 0x00;
+            leftTrigger.actuationFrequency = 0x00;
+            leftTrigger.P9 = 0x00;
+        }
+        if (affectedTriggers == EDS5AffectedTriggers::Both || affectedTriggers == EDS5AffectedTriggers::Right)
+        {
+            rightTrigger.bDirty = true;
+            rightTrigger.motorMode = DS5_TRIGGER_BOW;
+            rightTrigger.startResistance = (startAndStopZones >> 0) & 0xff;
+            rightTrigger.effectForce = (startAndStopZones >> 8) & 0xff;
+            rightTrigger.rangeForce = (forcePair >> 0) & 0xff;
+            rightTrigger.nearReleaseStrength = (forcePair >> 8) & 0xff;
+            rightTrigger.nearMiddleStrength = 0x00;
+            rightTrigger.pressedStrength = 0x00;
+            rightTrigger.P6 = 0x00;
+            rightTrigger.P7 = 0x00;
+            rightTrigger.actuationFrequency = 0x00;
+            rightTrigger.P9 = 0x00;
+        }
+        jc->modifying_lock.lock();
+
+        jc->set_ds5_trigger_effects(leftTrigger, rightTrigger);
+
+        jc->modifying_lock.unlock();
+    }
+}
+
+void JslSetDS5TriggersGalloping(int deviceId, EDS5AffectedTriggers affectedTriggers, unsigned char startPosition, unsigned char endPosition, unsigned char firstFoot, unsigned char secondFoot, unsigned char frequency)
+{
+    std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
+    JoyShock* jc = GetJoyShockFromHandle(deviceId);
+    if (jc != nullptr && jc->controller_type == ControllerType::s_ds)
+    {
+        if (startPosition < 2)
+            startPosition = 2;
+        if (startPosition > 7)
+            startPosition = 7;
+        if (endPosition <= startPosition)
+            endPosition = startPosition + 1;
+        if (endPosition > 8)
+            endPosition = 8;
+        if (firstFoot < 2)
+			firstFoot = 2;
+        if (firstFoot > 7)
+			firstFoot = 7;
+        if (secondFoot <= firstFoot)
+			secondFoot = firstFoot + 1;
+        if (secondFoot > 8)
+			secondFoot = 8;
+        if (frequency < 0)
+            frequency = 0;
+
+
+        unsigned short startAndStopZones = (1 << startPosition) | (1 << endPosition);
+        unsigned int timeAndRatio = ((secondFoot & 0x07) << (3 * 0)) | ((firstFoot & 0x07) << (3 * 1));
+
+        ds5_trigger_effect leftTrigger, rightTrigger;
+        if (affectedTriggers == EDS5AffectedTriggers::Both || affectedTriggers == EDS5AffectedTriggers::Left)
+        {
+            leftTrigger.bDirty = true;
+            leftTrigger.motorMode = DS5_TRIGGER_GALLOPING;
+            leftTrigger.startResistance = (startAndStopZones >> 0) & 0xff;
+            leftTrigger.effectForce = (startAndStopZones >> 8) & 0xff;
+            leftTrigger.rangeForce = (timeAndRatio >> 0) & 0xff;
+            leftTrigger.nearReleaseStrength = frequency;
+            leftTrigger.nearMiddleStrength = 0x00;
+            leftTrigger.pressedStrength = 0x00;
+            leftTrigger.P6 = 0x00;
+            leftTrigger.P7 = 0x00;
+            leftTrigger.actuationFrequency = 0x00;
+            leftTrigger.P9 = 0x00;
+        }
+        if (affectedTriggers == EDS5AffectedTriggers::Both || affectedTriggers == EDS5AffectedTriggers::Right)
+        {
+            rightTrigger.bDirty = true;
+            rightTrigger.motorMode = DS5_TRIGGER_GALLOPING;
+            rightTrigger.startResistance = (startAndStopZones >> 0) & 0xff;
+            rightTrigger.effectForce = (startAndStopZones >> 8) & 0xff;
+            rightTrigger.rangeForce = (timeAndRatio >> 0) & 0xff;
+            rightTrigger.nearReleaseStrength = frequency;
+            rightTrigger.nearMiddleStrength = 0x00;
+            rightTrigger.pressedStrength = 0x00;
+            rightTrigger.P6 = 0x00;
+            rightTrigger.P7 = 0x00;
+            rightTrigger.actuationFrequency = 0x00;
+            rightTrigger.P9 = 0x00;
+        }
+        jc->modifying_lock.lock();
+
+        jc->set_ds5_trigger_effects(leftTrigger, rightTrigger);
+
+        jc->modifying_lock.unlock();
+    }
+}
+
+void JslSetDS5TriggersMachine(int deviceId, EDS5AffectedTriggers affectedTriggers, unsigned char startPosition, unsigned char endPosition, unsigned char amplitudeA, unsigned char amplitudeB, unsigned char frequency, unsigned char period)
+{
+    std::shared_lock<std::shared_timed_mutex> lock(_connectedLock);
+    JoyShock* jc = GetJoyShockFromHandle(deviceId);
+    if (jc != nullptr && jc->controller_type == ControllerType::s_ds)
+    {
+        if (startPosition < 2)
+            startPosition = 2;
+        if (startPosition > 7)
+            startPosition = 7;
+        if (endPosition <= startPosition)
+            endPosition = startPosition + 1;
+        if (endPosition > 8)
+            endPosition = 8;
+        if (amplitudeA > 7)
+            amplitudeA = 7;
+        if (amplitudeB > 7)
+            amplitudeB = 7;
+        if (frequency < 0)
+            frequency = 0;
+
+        unsigned short startAndStopZones = (1 << startPosition) | (1 << endPosition);
+        unsigned int strengthPair = ((amplitudeA & 0x07) << (3 * 0)) | ((amplitudeB & 0x07) << (3 * 1));
+
+        ds5_trigger_effect leftTrigger, rightTrigger;
+        if (affectedTriggers == EDS5AffectedTriggers::Both || affectedTriggers == EDS5AffectedTriggers::Left)
+        {
+            leftTrigger.bDirty = true;
+            leftTrigger.motorMode = DS5_TRIGGER_MACHINE;
+            leftTrigger.startResistance = (startAndStopZones >> 0) & 0xff;
+            leftTrigger.effectForce = (startAndStopZones >> 8) & 0xff;
+            leftTrigger.rangeForce = (strengthPair >> 0) & 0xff;
+            leftTrigger.nearReleaseStrength = frequency;
+            leftTrigger.nearMiddleStrength = period;
+            leftTrigger.pressedStrength = 0x00;
+            leftTrigger.P6 = 0x00;
+            leftTrigger.P7 = 0x00;
+            leftTrigger.actuationFrequency = 0x00;
+            leftTrigger.P9 = 0x00;
+        }
+        if (affectedTriggers == EDS5AffectedTriggers::Both || affectedTriggers == EDS5AffectedTriggers::Right)
+        {
+            rightTrigger.bDirty = true;
+            rightTrigger.motorMode = DS5_TRIGGER_MACHINE;
+            rightTrigger.startResistance = (startAndStopZones >> 0) & 0xff;
+            rightTrigger.effectForce = (startAndStopZones >> 8) & 0xff;
+            rightTrigger.rangeForce = (strengthPair >> 0) & 0xff;
+            rightTrigger.nearReleaseStrength = frequency;
+            rightTrigger.nearMiddleStrength = period;
+            rightTrigger.pressedStrength = 0x00;
+            rightTrigger.P6 = 0x00;
+            rightTrigger.P7 = 0x00;
+            rightTrigger.actuationFrequency = 0x00;
+            rightTrigger.P9 = 0x00;
+        }
+        jc->modifying_lock.lock();
+
+        jc->set_ds5_trigger_effects(leftTrigger, rightTrigger);
+
+        jc->modifying_lock.unlock();
+    }
+}
+
+int encodeLowFreq(float lowFreq) {
+    float lf = std::clamp(lowFreq, 40.875885f, 626.286133f);
+    return std::lround(32 * std::log2(lf * 0.1)) - 0x40;
+}
+int encodeHighFreq(float highFreq) {
+    float hf = std::clamp(highFreq, 81.75177f, 1252.572266f);
+    return (std::lround(32 * std::log2(hf * 0.1)) - 0x60) * 4;
+}
+int encodeLowAmpli(float rawAmpli) {
+    int encodedAmpli = 0;
+    if (0 < rawAmpli && rawAmpli < 0.012) {
+        encodedAmpli = 1;
+    }
+    else if (0.012 <= rawAmpli && rawAmpli < 0.112) {
+        encodedAmpli = std::lround(4 * std::log2(rawAmpli * 110));
+    }
+    else if (0.112 <= rawAmpli && rawAmpli < 0.225) {
+        encodedAmpli = std::lround(16 * std::log2(rawAmpli * 17));
+    }
+    else if (0.225 <= rawAmpli && rawAmpli <= 1) {
+        encodedAmpli = std::lround(32 * std::log2(rawAmpli * 8.7));
+    }
+    return static_cast<int>(encodedAmpli / 2) + 64;
+}
+int encodeHighAmpli(float rawAmpli) {
+    int encodedAmpli = 0;
+    if (0 < rawAmpli && rawAmpli < 0.012) {
+        encodedAmpli = 1;
+    }
+    else if (0.012 <= rawAmpli && rawAmpli < 0.112) {
+        encodedAmpli = std::lround(4 * std::log2(rawAmpli * 110));
+    }
+    else if (0.112 <= rawAmpli && rawAmpli < 0.225) {
+        encodedAmpli = std::lround(16 * std::log2(rawAmpli * 17));
+    }
+    else if (0.225 <= rawAmpli && rawAmpli <= 1) {
+        encodedAmpli = std::lround(32 * std::log2(rawAmpli * 8.7));
+    }
+    return encodedAmpli * 2;
+}
+
+void JslEnableHDRumble(int deviceId)
+{
+    JoyShock* jc = GetJoyShockFromHandle(deviceId);
+    if (jc != nullptr && jc->controller_type == ControllerType::n_switch)
+    {
+        jc->enable_joycon_rumble();
+    }
+}
+
+void JslDisableHDRumble(int deviceId)
+{
+    JoyShock* jc = GetJoyShockFromHandle(deviceId);
+    if (jc != nullptr && jc->controller_type == ControllerType::n_switch)
+    {
+        jc->disable_joycon_rumble();
+    }
+}
+
+void JslSetHDRumble(int deviceId, float lowFreq, float lowAmpli, float highFreq, float highAmpli)
+{
+    JoyShock* jc = GetJoyShockFromHandle(deviceId);
+    if (jc != nullptr && jc->controller_type == ControllerType::n_switch) {
+        int lf = encodeLowFreq(lowFreq);
+        int la = encodeLowAmpli(lowAmpli);
+        int hf = encodeHighFreq(highFreq);
+        int ha = encodeHighAmpli(highAmpli);
+
+        jc->small_rumble = int(lowAmpli * 255);
+        jc->big_rumble = int(highAmpli * 255);
+        jc->set_joycon_rumble(
+            lf, la, hf, ha,
+            lf, la, hf, ha
+        );
+    }
+}
+void JslSetHDRumbleLR(int deviceId, float lowFreq_L, float lowAmpli_L, float highFreq_L, float highAmpli_L,
+    float lowFreq_R, float lowAmpli_R, float highFreq_R, float highAmpli_R)
+{
+    JoyShock* jc = GetJoyShockFromHandle(deviceId);
+    if (jc != nullptr && jc->controller_type == ControllerType::n_switch) {
+        jc->small_rumble = int((lowAmpli_L + lowAmpli_R) / 2 * 255);
+        jc->big_rumble = int((highAmpli_L + highAmpli_R) / 2 * 255);
+        jc->set_joycon_rumble(
+            encodeLowFreq(lowFreq_L),
+            encodeLowAmpli(lowAmpli_L),
+            encodeHighFreq(highFreq_L),
+            encodeHighAmpli(highAmpli_L),
+            encodeLowFreq(lowFreq_R),
+            encodeLowAmpli(lowAmpli_R),
+            encodeHighFreq(highFreq_R),
+            encodeHighAmpli(highAmpli_R)
+        );
+    }
+}
+
 // set controller player number indicator (not all controllers have a number indicator which can be set, but that just means nothing will be done when this is called -- no harm)
 void JslSetPlayerNumber(int deviceId, int number)
 {
