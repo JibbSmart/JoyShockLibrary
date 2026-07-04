@@ -57,8 +57,6 @@ public:
 	wchar_t *serial;
 
 	std::string name;
-	
-	unsigned char packetCounter = 0;
 
 	int deviceNumber = 0;// left(0) or right(1) vjoy
 
@@ -1479,7 +1477,7 @@ public:
 		memset(buf, 0, 64);
 
 		buf[0] = 0x10;
-		buf[1] = packetCounter++ & 0x0f;
+		buf[1] = (++global_count) & 0x0f;
 
 		if (isLeft) {
 			if (rumble == 0) {
@@ -1511,7 +1509,7 @@ public:
 		memset(buf, 0, 64);
 
 		buf[0] = 0x10;
-		buf[1] = packetCounter++ & 0x0f;
+		buf[1] = (++global_count) & 0x0f;
 		EncodeRumble(&buf[2], MotorFreqFromStrength(smallRumble), (smallRumble / 255.0f));
 		EncodeRumble(&buf[6], MotorFreqFromStrength(bigRumble), (bigRumble / 255.0f));
 
