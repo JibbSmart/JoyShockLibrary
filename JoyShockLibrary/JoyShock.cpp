@@ -921,7 +921,9 @@ public:
 	}
 
 	void init_ds4_bt() {
-		printf("initialise, set colour\n");
+		#ifdef _DEBUG
+			printf("initialise, set colour\n");
+		#endif
 		unsigned char buf[78];
 		memset(buf, 0, 78);
 
