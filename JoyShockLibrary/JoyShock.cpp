@@ -368,8 +368,8 @@ public:
 		modifying_lock.lock();
 		if (num_cumulative_gyro_samples == 0) {
 			gyroX = cumulative_gyro_x;
-			gyroX = cumulative_gyro_y;
-			gyroX = cumulative_gyro_z;
+			gyroY = cumulative_gyro_y;
+			gyroZ = cumulative_gyro_z;
 		}
 		else {
 			gyroX = cumulative_gyro_x / num_cumulative_gyro_samples;
