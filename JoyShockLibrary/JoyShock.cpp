@@ -38,6 +38,7 @@ enum ControllerType { n_switch, s_ds4, s_ds };
 // Joycon and Pro conroller stuff is mostly from
 // https://github.com/mfosse/JoyCon-Driver
 // https://github.com/dekuNukem/Nintendo_Switch_Reverse_Engineering/
+// https://github.com/fossephate/JoyCon-Driver/
 #define JOYCON_VENDOR 0x057e
 #define JOYCON_L_BT 0x2006
 #define JOYCON_R_BT 0x2007
@@ -1443,6 +1444,77 @@ public:
 
         hid_write(handle, &buf[1], 78);
     }
+	
+	static float MotorFreqFromStrength(unsigned char motorValue) { // Dynamic frequency
+		if (motorValue == 0) return 40.0f;
+		return 40.0f + (motorValue / 255.0f) * (320.0f - 40.0f);
+	}
+
+	static void EncodeRumble(unsigned char* data, float freq, float amp) {
+		if (freq < 41.0f) freq = 41.0f;
+		if (freq > 1253.0f) freq = 1253.0f;
+		if (amp < 0.0f) amp = 0.0f;
+		if (amp > 1.0f) amp = 1.0f;
+
+		uint16_t hf = (uint16_t)(320.0f * log2f(freq * 0.1f) + 0.5f);
+		uint8_t hf_byte = (hf - (hf % 4)) / 4;
+		uint8_t lf_byte = (uint8_t)((freq * 0.1f) / powf(2.0f, (hf_byte - 0x60) / 32.0f));
+
+		uint16_t amp_enc = (uint16_t)(amp * 0x7FFF);
+		uint8_t amp_hi = (amp_enc >> 8) & 0xFF;
+		uint8_t amp_lo = amp_enc & 0xFF;
+
+		data[0] = lf_byte;
+		data[1] = hf_byte;
+		data[2] = amp_lo;
+		data[3] = amp_hi;
+	}
+	
+	// https://github.com/fossephate/JoyCon-Driver/blob/main/joycon-driver/include/Joycon.hpp
+	void set_joycon_rumble(bool isLeft, unsigned char rumble)
+	{
+		unsigned char buf[64];
+		memset(buf, 0, 64);
+
+		buf[0] = 0x10;
+		buf[1] = (++global_count) & 0x0f;
+
+		if (isLeft) {
+			if (rumble == 0) {
+				buf[2] = 0x00;
+				buf[3] = 0x01;
+				buf[4] = 0x40;
+				buf[5] = 0x40;
+			}
+			else
+				EncodeRumble(&buf[2], MotorFreqFromStrength(rumble), (rumble * 90) / 25500.0f); // It seems that values above 90% may cause wear on the motors of Nintendo controllers.
+		}
+		else { // Is right
+			if (rumble == 0) {
+				buf[6] = 0x00;
+				buf[7] = 0x01;
+				buf[8] = 0x40;
+				buf[9] = 0x40;
+			}
+			else
+				EncodeRumble(&buf[6], MotorFreqFromStrength(rumble), (rumble * 90) / 25500.0f);
+		}
+
+		hid_write(handle, buf, sizeof(buf));
+	}
+
+	void set_pro_controller_rumble(unsigned char smallRumble, unsigned char bigRumble)
+	{
+		unsigned char buf[64];
+		memset(buf, 0, 64);
+
+		buf[0] = 0x10;
+		buf[1] = (++global_count) & 0x0f;
+		EncodeRumble(&buf[2], MotorFreqFromStrength(smallRumble), (smallRumble / 255.0f));
+		EncodeRumble(&buf[6], MotorFreqFromStrength(bigRumble), (bigRumble / 255.0f));
+
+		hid_write(handle, buf, sizeof(buf));
+	}
 
 	//// mfosse credits Hypersect (Ryan Juckett), but I've removed deadzones so the consuming application can deal with them
 	//// http://blog.hypersect.com/interpreting-analog-sticks/

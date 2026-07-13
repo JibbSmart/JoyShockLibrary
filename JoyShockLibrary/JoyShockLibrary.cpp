@@ -1135,6 +1135,16 @@ void JslSetRumble(int deviceId, int smallRumble, int bigRumble)
                 jc->player_number);
 		jc->modifying_lock.unlock();
     }
+	else if (jc != nullptr && jc->controller_type == ControllerType::n_switch) {
+		jc->modifying_lock.lock();
+		if (jc->left_right == 3)
+			jc->set_pro_controller_rumble(jc->small_rumble, jc->big_rumble);
+		else if (jc->left_right == 1)
+			jc->set_joycon_rumble(true, jc->big_rumble);
+		else if (jc->left_right == 2)
+			jc->set_joycon_rumble(false, jc->small_rumble);
+		jc->modifying_lock.unlock();
+	}
 }
 // set controller player number indicator (not all controllers have a number indicator which can be set, but that just means nothing will be done when this is called -- no harm)
 void JslSetPlayerNumber(int deviceId, int number)
