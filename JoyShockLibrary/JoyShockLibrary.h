@@ -1,6 +1,8 @@
 // JoyShockLibrary.h - Contains declarations of functions
 #pragma once
 
+#include <string>
+
 #if _MSC_VER // this is defined when compiling with Visual Studio
 #define JOY_SHOCK_API __declspec(dllexport) // Visual Studio needs annotating exported functions with this
 #else
@@ -134,10 +136,12 @@ typedef struct JSL_SETTINGS {
 	int colour = 0;
 	int playerNumber = 0;
 	int controllerType = 0;
+	std::string controllerPath;
 	int splitType = 0;
 	bool isCalibrating = false;
 	bool autoCalibrationEnabled = false;
 	bool isConnected = false;
+	bool isWired = false;
 } JSL_SETTINGS;
 
 extern "C" JOY_SHOCK_API int JslConnectDevices();
